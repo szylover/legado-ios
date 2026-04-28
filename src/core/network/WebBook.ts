@@ -8,7 +8,7 @@ import { Book } from '../data/models/Book';
 import { BookChapter } from '../data/models/BookChapter';
 import { AnalyzeUrl, UrlContext } from './AnalyzeUrl';
 import { httpFetch } from './HttpClient';
-import { AnalyzeRule } from '../ruleEngine/AnalyzeRule';
+import { AnalyzeRule } from '../analyzeRule/AnalyzeRule';
 
 function makeJsCtx(source: BookSource, extra?: Record<string, unknown>): UrlContext {
   return {
