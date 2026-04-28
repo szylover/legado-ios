@@ -40,8 +40,8 @@ export default function Search() {
 
   const addBook = async (r: SearchResult) => {
     await BookDao.upsert({
-      bookUrl: r.bookUrl, tocUrl: r.bookUrl, origin: r.bookUrl,
-      originName: r.name, name: r.name, author: r.author,
+      bookUrl: r.bookUrl, tocUrl: r.bookUrl, origin: r.originUrl,
+      originName: r.originName, name: r.name, author: r.author,
       coverUrl: r.coverUrl, intro: r.intro, kind: r.kind,
       latestChapterTitle: r.lastChapter, type: 0, group: 0,
       latestChapterTime: 0, lastCheckTime: 0, lastCheckCount: 0,

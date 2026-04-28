@@ -6,6 +6,8 @@ import BookSourceImport from './pages/BookSourceImport';
 import Search from './pages/Search';
 import Settings from './pages/Settings';
 import Reader from './pages/Reader';
+import RssArticleList from './pages/RssArticleList';
+import RssArticleViewer from './pages/RssArticleViewer';
 
 export const router = createHashRouter([
   {
@@ -20,4 +22,6 @@ export const router = createHashRouter([
     ],
   },
   { path: '/reader/:bookUrl', element: <Reader /> },
+  { path: '/rss/:sourceUrl', element: <RssArticleList /> },
+  { path: '/rss/article', element: <RssArticleViewer /> },
 ]);
