@@ -21,11 +21,9 @@ export interface HttpOptions extends ParsedUrl {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
-/** 代理 URL：开发时走 :3001，生产 --serve 时同源 /proxy */
+/** 代理 URL：始终使用相对路径 /api/proxy（开发时 Vite 转发到 :3001，生产时 Azure Function） */
 function proxyUrl(targetUrl: string): string {
-  if (typeof window === 'undefined') return targetUrl;
-  const base = window.location.port === '3000' ? '' : 'http://localhost:3001';
-  return `${base}/proxy?url=${encodeURIComponent(targetUrl)}`;
+  return `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
 }
 
 export async function httpFetch(options: HttpOptions): Promise<HttpResponse> {
