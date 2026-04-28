@@ -21,12 +21,19 @@ class LegadoDB extends Dexie {
       bookGroups:  '++groupId, groupName',
       rssSources:  'sourceUrl, sourceName, sourceGroup, enabled',
     });
-    // v2: adds cachedContent field (no schema change needed — Dexie stores all fields)
     this.version(2).stores({
       bookSources: 'bookSourceUrl, bookSourceName, bookSourceGroup, enabled, lastUpdateTime',
       books:       'bookUrl, name, author, origin, group',
       bookChapters: '[bookUrl+url], bookUrl, index',
       bookGroups:  '++groupId, groupName',
+      rssSources:  'sourceUrl, sourceName, sourceGroup, enabled',
+    });
+    // v3: add `order` index to books and bookGroups (required for orderBy('order'))
+    this.version(3).stores({
+      bookSources: 'bookSourceUrl, bookSourceName, bookSourceGroup, enabled, lastUpdateTime',
+      books:       'bookUrl, name, author, origin, group, order',
+      bookChapters: '[bookUrl+url], bookUrl, index',
+      bookGroups:  '++groupId, groupName, order',
       rssSources:  'sourceUrl, sourceName, sourceGroup, enabled',
     });
   }
