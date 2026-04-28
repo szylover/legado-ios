@@ -6,8 +6,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  useColorScheme, ActivityIndicator, StatusBar, Dimensions, Modal,
-  Slider,
+  useColorScheme, ActivityIndicator, StatusBar, Modal,
+  FlatList, SafeAreaView,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { BookDao } from '@/data/dao/BookDao';
@@ -17,9 +17,7 @@ import { Book } from '@/data/models/Book';
 import { BookChapter } from '@/data/models/BookChapter';
 import { getContent } from '@/core/network/WebBook';
 import { DEFAULT_READ_CONFIG, ReadConfig } from '@/data/models/ReadConfig';
-import { Settings, ChevronLeft, ChevronRight, List } from 'lucide-react-native';
-
-const { width: SCREEN_W } = Dimensions.get('window');
+import { Settings, ChevronLeft, ChevronRight, List, X } from 'lucide-react-native';
 
 export default function ReaderScreen() {
   const { id, chapter: chapterParam } = useLocalSearchParams<{ id: string; chapter?: string }>();
@@ -33,6 +31,7 @@ export default function ReaderScreen() {
   const [loading, setLoading] = useState(false);
   const [showUI, setShowUI] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showToc, setShowToc] = useState(false);
   const [config, setConfig] = useState<ReadConfig>(DEFAULT_READ_CONFIG);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -153,6 +152,9 @@ export default function ReaderScreen() {
           <Text style={[styles.barChapter, { color: textColor }]} numberOfLines={1}>
             {chapter?.title ?? `${currentIndex + 1}/${chapters.length}`}
           </Text>
+          <Pressable onPress={() => { setShowUI(false); setShowToc(true); }} style={styles.barBtn}>
+            <List size={22} color={textColor} />
+          </Pressable>
           <Pressable onPress={() => goChapter(1)} disabled={currentIndex >= chapters.length - 1} style={styles.barBtn}>
             <ChevronRight size={22} color={currentIndex >= chapters.length - 1 ? '#AAA' : textColor} />
           </Pressable>
@@ -165,6 +167,18 @@ export default function ReaderScreen() {
         config={config}
         onChange={setConfig}
         onClose={() => setShowSettings(false)}
+      />
+
+      {/* 目录面板 */}
+      <TocDrawer
+        visible={showToc}
+        chapters={chapters}
+        currentIndex={currentIndex}
+        onSelect={(i) => { setCurrentIndex(i); setShowToc(false); }}
+        onClose={() => setShowToc(false)}
+        isDark={isDark}
+        textColor={textColor}
+        bgColor={bgColor}
       />
     </View>
   );
@@ -231,7 +245,58 @@ function SettingsPanel({ visible, config, onChange, onClose }: {
   );
 }
 
-function formatContent(text: string, indent: number): string {
+function TocDrawer({ visible, chapters, currentIndex, onSelect, onClose, isDark, textColor, bgColor }: {
+  visible: boolean; chapters: BookChapter[]; currentIndex: number;
+  onSelect: (i: number) => void; onClose: () => void;
+  isDark: boolean; textColor: string; bgColor: string;
+}) {
+  const bg = isDark ? '#1A1A1A' : '#FAFAFA';
+  const border = isDark ? '#333' : '#EBEBEB';
+  const tocRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    if (visible && tocRef.current && chapters.length > 0) {
+      tocRef.current.scrollToIndex({ index: Math.max(0, currentIndex), animated: false });
+    }
+  }, [visible, currentIndex, chapters.length]);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.tocOverlay}>
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <SafeAreaView style={[styles.tocDrawer, { backgroundColor: bg }]}>
+          <View style={[styles.tocHeader, { borderBottomColor: border }]}>
+            <Text style={[styles.tocTitle, { color: textColor }]}>目录</Text>
+            <Pressable onPress={onClose} style={{ padding: 8 }}>
+              <X size={20} color={textColor} />
+            </Pressable>
+          </View>
+          <FlatList
+            ref={tocRef}
+            data={chapters}
+            keyExtractor={(c) => c.url}
+            getItemLayout={(_, index) => ({ length: 48, offset: 48 * index, index })}
+            renderItem={({ item: c, index }) => (
+              <Pressable
+                style={[styles.tocItem, { borderBottomColor: border },
+                  index === currentIndex && { backgroundColor: isDark ? '#2A2020' : '#FFF0EA' }]}
+                onPress={() => onSelect(index)}
+              >
+                <Text style={[styles.tocItemText,
+                  { color: index === currentIndex ? '#E8735A' : textColor }]}
+                  numberOfLines={1}>
+                  {c.title}
+                </Text>
+              </Pressable>
+            )}
+          />
+        </SafeAreaView>
+      </View>
+    </Modal>
+  );
+}
+
+(text: string, indent: number): string {
   if (!text) return '';
   const pad = '\u3000'.repeat(indent); // 全角空格缩进
   return text
@@ -275,4 +340,10 @@ const styles = StyleSheet.create({
   bgOptions: { flexDirection: 'row', gap: 10 },
   bgOption: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: '#DDD' },
   bgOptionActive: { borderWidth: 3, borderColor: '#E8735A' },
+  tocOverlay: { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.4)' },
+  tocDrawer: { width: '72%', alignSelf: 'flex-end' },
+  tocHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5 },
+  tocTitle: { fontSize: 17, fontWeight: '700' },
+  tocItem: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 0.5 },
+  tocItemText: { fontSize: 14 },
 });
