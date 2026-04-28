@@ -76,6 +76,11 @@ export default function Search() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="source-name">{r.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{r.author}</div>
+              {r.originName && (
+                <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 2, opacity: 0.8 }}>
+                  📚 {r.originName}
+                </div>
+              )}
               {r.intro && (
                 <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4,
                   overflow: 'hidden', display: '-webkit-box',

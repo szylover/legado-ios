@@ -1,6 +1,7 @@
 import { createHashRouter } from 'react-router-dom';
 import Layout from './components/Layout';
 import Bookshelf from './pages/Bookshelf';
+import BookDetail from './pages/BookDetail';
 import BookSources from './pages/BookSources';
 import BookSourceImport from './pages/BookSourceImport';
 import Search from './pages/Search';
@@ -15,6 +16,7 @@ export const router = createHashRouter([
     element: <Layout />,
     children: [
       { index: true, element: <Bookshelf /> },
+      { path: 'book/:bookUrl', element: <BookDetail /> },
       { path: 'sources', element: <BookSources /> },
       { path: 'sources/import', element: <BookSourceImport /> },
       { path: 'search', element: <Search /> },

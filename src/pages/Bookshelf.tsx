@@ -29,7 +29,7 @@ export default function Bookshelf() {
         <div className="book-grid">
           {books.map(book => (
             <BookCard key={book.bookUrl} book={book}
-              onClick={() => navigate(`/reader/${encodeURIComponent(book.bookUrl)}`)} />
+              onClick={() => navigate(`/book/${encodeURIComponent(book.bookUrl)}`)} />
           ))}
         </div>
       )}
@@ -38,15 +38,33 @@ export default function Bookshelf() {
 }
 
 function BookCard({ book, onClick }: { book: Book; onClick: () => void }) {
+  const total = book.totalChapterNum || 0;
+  const cur = book.durChapterIndex || 0;
+  const pct = total > 0 ? Math.round(((cur + 1) / total) * 100) : 0;
+
   return (
     <div className="book-card" onClick={onClick}>
       <div className="book-cover">
         {book.coverUrl
           ? <img src={book.coverUrl} alt={book.name} loading="lazy" />
           : <div className="book-cover-ph">📖</div>}
+        {total > 0 && (
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            height: 3, background: 'rgba(0,0,0,0.3)',
+          }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 2 }} />
+          </div>
+        )}
       </div>
       <div className="book-title">{book.name}</div>
-      <div className="book-author">{book.author}</div>
+      {total > 0 ? (
+        <div className="book-author" style={{ fontSize: 10 }}>
+          {pct < 100 ? `${pct}% · 第${cur + 1}章` : '✓ 已读完'}
+        </div>
+      ) : (
+        <div className="book-author">{book.author}</div>
+      )}
     </div>
   );
 }
