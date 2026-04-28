@@ -85,7 +85,7 @@ export const BookSourceImporter = {
     const valid: BookSource[] = [];
     for (const item of items) {
       if (isValidBookSource(item)) {
-        valid.push(normalizeSource(item as Record<string, unknown>));
+        valid.push(normalizeSource(item as unknown as Record<string, unknown>));
       } else {
         result.failed++;
         result.errors.push(`无效书源: ${JSON.stringify(item).slice(0, 60)}`);
