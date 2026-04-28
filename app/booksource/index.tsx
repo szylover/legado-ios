@@ -8,7 +8,7 @@ import {
   useColorScheme, Alert, TextInput,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { BookSource } from '@/data/models/BookSource';
+import { BookSource } from '@/data/entities/BookSource';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { Trash2, Plus, Search } from 'lucide-react-native';
 

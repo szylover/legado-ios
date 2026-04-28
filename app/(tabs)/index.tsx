@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { BookDao } from '@/data/dao/BookDao';
-import { BookGroup, DEFAULT_GROUPS } from '@/data/models/BookGroup';
+import { BookGroup, DEFAULT_GROUPS } from '@/data/entities/BookGroup';
 import { BookGroupDao } from '@/data/dao/BookGroupDao';
-import { Book } from '@/data/models/Book';
+import { Book } from '@/data/entities/Book';
 import { BookCard } from '@/components/bookshelf/BookCard';
 import { LayoutGrid, List, Plus } from 'lucide-react-native';
 

@@ -6,7 +6,7 @@ import React from 'react';
 import {
   View, Text, Pressable, StyleSheet, Image, useColorScheme, Dimensions,
 } from 'react-native';
-import { Book } from '@/data/models/Book';
+import { Book } from '@/data/entities/Book';
 
 interface Props {
   book: Book;

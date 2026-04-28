@@ -1,8 +1,8 @@
 /**
  * BookGroupDao
  */
-import { getDatabase } from '../database/AppDatabase';
-import { BookGroup } from '../models/BookGroup';
+import { getDatabase } from '../AppDatabase';
+import { BookGroup } from '../entities/BookGroup';
 
 function rowToGroup(row: Record<string, unknown>): BookGroup {
   return {

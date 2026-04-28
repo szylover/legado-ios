@@ -2,8 +2,8 @@
  * BookChapterDao — 章节数据访问层
  */
 
-import { getDatabase } from '../database/AppDatabase';
-import { BookChapter } from '../models/BookChapter';
+import { getDatabase } from '../AppDatabase';
+import { BookChapter } from '../entities/BookChapter';
 
 function rowToChapter(row: Record<string, unknown>): BookChapter {
   return {

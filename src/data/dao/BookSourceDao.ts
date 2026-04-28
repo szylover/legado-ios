@@ -2,8 +2,8 @@
  * BookSourceDao — 书源数据访问层
  */
 
-import { getDatabase } from '../database/AppDatabase';
-import { BookSource } from '../models/BookSource';
+import { getDatabase } from '../AppDatabase';
+import { BookSource } from '../entities/BookSource';
 
 function rowToBookSource(row: Record<string, unknown>): BookSource {
   const parse = (v: unknown) => {
