@@ -7,7 +7,7 @@ import { BookSource, SearchRule, BookInfoRule, TocRule, ContentRule } from '@/da
 import { Book } from '@/data/entities/Book';
 import { BookChapter } from '@/data/entities/BookChapter';
 import { AnalyzeUrl, UrlContext } from '@/model/analyzeRule/AnalyzeUrl';
-import { httpFetch } from './HttpClient';
+import { httpFetch } from '@/help/http/HttpClient';
 import { AnalyzeRule } from '@/model/analyzeRule/AnalyzeRule';
 
 function makeJsCtx(source: BookSource, extra?: Record<string, unknown>): UrlContext {
