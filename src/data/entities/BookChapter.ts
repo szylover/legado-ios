@@ -16,4 +16,6 @@ export interface BookChapter {
   isPay: boolean;
   updateTime?: string;
   variable?: string;
+  /** 缓存的正文内容（下载后填充） */
+  cachedContent?: string;
 }
