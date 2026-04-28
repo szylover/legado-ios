@@ -11,7 +11,7 @@
  */
 
 import { ParsedUrl } from './AnalyzeUrl';
-import { CookieStore } from './CookieStore';
+import { CookieStore } from '@/help/http/CookieStore';
 
 export interface HttpResponse {
   text: string;

@@ -9,7 +9,7 @@ import {
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { BookSource } from '@/data/entities/BookSource';
 import { AnalyzeUrl } from '@/model/analyzeRule/AnalyzeUrl';
-import { httpFetch } from '@/core/network/HttpClient';
+import { httpFetch } from '@/help/http/HttpClient';
 import { AnalyzeRule } from '@/model/analyzeRule/AnalyzeRule';
 import { router } from 'expo-router';
 

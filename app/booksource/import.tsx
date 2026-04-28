@@ -10,9 +10,9 @@ import {
 import { Stack, router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { BookSourceImporter, ImportResult } from '@/core/network/BookSourceImporter';
-import { RssSourceImporter, RssImportResult } from '@/core/network/RssSourceImporter';
-import { isRssSource } from '@/core/network/RssSourceImporter';
+import { BookSourceImporter, ImportResult } from '@/help/source/BookSourceImporter';
+import { RssSourceImporter, RssImportResult } from '@/help/source/RssSourceImporter';
+import { isRssSource } from '@/help/source/RssSourceImporter';
 
 /** Test subscription source URL */
 const TEST_RSS_URL = 'https://raw.githubusercontent.com/shidahuilang/shuyuan-bak/refs/heads/main/%E5%A4%A7%E7%81%B0%E7%8B%BC%E8%AE%A2%E9%98%85%E6%BA%90.json';
