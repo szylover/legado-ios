@@ -3,8 +3,8 @@
  * 支持从 legado Android 导出的 JSON 文件直接导入
  */
 
-import { BookSource } from '../data/models/BookSource';
-import { BookSourceDao } from '../data/dao/BookSourceDao';
+import { BookSource } from '@/data/entities/BookSource';
+import { BookSourceDao } from '@/data/dao/BookSourceDao';
 
 /** 验证一个对象是否是合法的书源 */
 function isValidBookSource(obj: unknown): obj is BookSource {

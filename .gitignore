@@ -26,3 +26,12 @@ Carthage/Build/
 
 # Environment
 .env
+
+# Node
+node_modules/
+dist/
+
+# Expo local builds (keep README but ignore actual bundles)
+publish/v*/
+publish/latest/
+publish/manifest.json

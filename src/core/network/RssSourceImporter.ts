@@ -2,8 +2,8 @@
  * RssSourceImporter — import/export RssSource JSON (legado Android format)
  */
 
-import { RssSource } from '../models/RssSource';
-import { RssSourceDao } from '../dao/RssSourceDao';
+import { RssSource } from '@/data/entities/RssSource';
+import { RssSourceDao } from '@/data/dao/RssSourceDao';
 
 export interface RssImportResult {
   total: number;

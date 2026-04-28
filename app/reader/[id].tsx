@@ -13,10 +13,10 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { BookDao } from '@/data/dao/BookDao';
 import { BookChapterDao } from '@/data/dao/BookChapterDao';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
-import { Book } from '@/data/models/Book';
-import { BookChapter } from '@/data/models/BookChapter';
+import { Book } from '@/data/entities/Book';
+import { BookChapter } from '@/data/entities/BookChapter';
 import { getContent } from '@/core/network/WebBook';
-import { DEFAULT_READ_CONFIG, ReadConfig } from '@/data/models/ReadConfig';
+import { DEFAULT_READ_CONFIG, ReadConfig } from '@/data/entities/ReadConfig';
 import { Settings, ChevronLeft, ChevronRight, List, X } from 'lucide-react-native';
 
 export default function ReaderScreen() {
@@ -296,7 +296,7 @@ function TocDrawer({ visible, chapters, currentIndex, onSelect, onClose, isDark,
   );
 }
 
-(text: string, indent: number): string {
+function formatContent(text: string, indent: number): string {
   if (!text) return '';
   const pad = '\u3000'.repeat(indent); // 全角空格缩进
   return text
