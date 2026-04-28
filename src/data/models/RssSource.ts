@@ -5,28 +5,32 @@ export interface RssSource {
   sourceName: string;
   sourceGroup?: string;
   sourceIcon?: string;
+  sourceComment?: string;
   enabled: boolean;
   enabledCookieJar?: boolean;
+  enableJs?: boolean;
+  loadWithBaseUrl?: boolean;
+  articleStyle?: number; // 0=RSS, 1=WebView
   concurrentRate?: string;
   header?: string;
   loginUrl?: string;
   loginUi?: string;
   loginCheckJs?: string;
   jsLib?: string;
+  injectJs?: string;
+  shouldOverrideUrlLoading?: string;
   sortUrl?: string;
   singleUrl: boolean;
-  articleList?: string;
-  title?: string;
-  author?: string;
-  kind?: string;
-  intro?: string;
-  updateTime?: string;
-  imgUrl?: string;
-  link?: string;
-  content?: string;
+  customOrder?: number;
+  // Rules
+  ruleArticles?: string;
+  ruleNextPage?: string;
+  ruleTitle?: string;
+  rulePubDate?: string;
+  ruleImage?: string;
+  ruleLink?: string;
+  ruleContent?: string;
   style?: string;
-  publishDate?: string;
-  nextPageUrl?: string;
   webCss?: string;
   lastUpdateTime: number;
 }
