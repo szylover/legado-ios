@@ -76,6 +76,16 @@ function forward(target, req) {
       if (!skip.has(k.toLowerCase())) fwdHeaders[k] = v;
     }
     fwdHeaders['host'] = target.host;
+    // Mimic a real browser so novel sites don't reject server-side requests
+    if (!fwdHeaders['user-agent']) {
+      fwdHeaders['user-agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+    }
+    if (!fwdHeaders['accept']) {
+      fwdHeaders['accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+    }
+    if (!fwdHeaders['accept-language']) {
+      fwdHeaders['accept-language'] = 'zh-CN,zh;q=0.9,en;q=0.8';
+    }
 
     const body = req.rawBody ? Buffer.from(req.rawBody) : Buffer.alloc(0);
     const opts = {
