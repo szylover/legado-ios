@@ -1,0 +1,15 @@
+// BookGroup.ts — matches legado Android BookGroup.kt
+
+export interface BookGroup {
+  groupId: number;
+  groupName: string;
+  order: number;
+  show: boolean;
+}
+
+export const DEFAULT_GROUPS: BookGroup[] = [
+  { groupId: -1, groupName: '全部', order: -10, show: true },
+  { groupId: -2, groupName: '本地', order: -9, show: true },
+  { groupId: -3, groupName: '音频', order: -8, show: true },
+  { groupId: -4, groupName: '未分组', order: -7, show: true },
+];
