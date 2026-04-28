@@ -145,6 +145,43 @@ async function initSchema(db: SQLite.SQLiteDatabase): Promise<void> {
     );
   `);
 
+  // rss_sources
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS rss_sources (
+      sourceUrl               TEXT PRIMARY KEY NOT NULL,
+      sourceName              TEXT NOT NULL DEFAULT '',
+      sourceGroup             TEXT,
+      sourceIcon              TEXT,
+      sourceComment           TEXT,
+      enabled                 INTEGER NOT NULL DEFAULT 1,
+      enabledCookieJar        INTEGER DEFAULT 0,
+      enableJs                INTEGER DEFAULT 1,
+      loadWithBaseUrl         INTEGER DEFAULT 0,
+      articleStyle            INTEGER NOT NULL DEFAULT 0,
+      concurrentRate          TEXT,
+      header                  TEXT,
+      loginUrl                TEXT,
+      loginUi                 TEXT,
+      loginCheckJs            TEXT,
+      jsLib                   TEXT,
+      injectJs                TEXT,
+      shouldOverrideUrlLoading TEXT,
+      sortUrl                 TEXT,
+      singleUrl               INTEGER NOT NULL DEFAULT 0,
+      customOrder             INTEGER NOT NULL DEFAULT 0,
+      ruleArticles            TEXT,
+      ruleNextPage            TEXT,
+      ruleTitle               TEXT,
+      rulePubDate             TEXT,
+      ruleImage               TEXT,
+      ruleLink                TEXT,
+      ruleContent             TEXT,
+      style                   TEXT,
+      webCss                  TEXT,
+      lastUpdateTime          INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+
   // read_config
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS read_config (
