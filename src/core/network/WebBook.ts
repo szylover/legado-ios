@@ -3,12 +3,12 @@
  * 对应 legado Android: webBook/ 下各 worker
  */
 
-import { BookSource, SearchRule, BookInfoRule, TocRule, ContentRule } from '../data/models/BookSource';
-import { Book } from '../data/models/Book';
-import { BookChapter } from '../data/models/BookChapter';
-import { AnalyzeUrl, UrlContext } from './AnalyzeUrl';
+import { BookSource, SearchRule, BookInfoRule, TocRule, ContentRule } from '@/data/entities/BookSource';
+import { Book } from '@/data/entities/Book';
+import { BookChapter } from '@/data/entities/BookChapter';
+import { AnalyzeUrl, UrlContext } from '@/model/analyzeRule/AnalyzeUrl';
 import { httpFetch } from './HttpClient';
-import { AnalyzeRule } from '../ruleEngine/AnalyzeRule';
+import { AnalyzeRule } from '@/model/analyzeRule/AnalyzeRule';
 
 function makeJsCtx(source: BookSource, extra?: Record<string, unknown>): UrlContext {
   return {

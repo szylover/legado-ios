@@ -12,8 +12,8 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { BookDao } from '@/data/dao/BookDao';
 import { BookChapterDao } from '@/data/dao/BookChapterDao';
-import { Book } from '@/data/models/Book';
-import { BookChapter } from '@/data/models/BookChapter';
+import { Book } from '@/data/entities/Book';
+import { BookChapter } from '@/data/entities/BookChapter';
 import { getBookInfo, getChapterList } from '@/core/network/WebBook';
 import { BookmarkPlus, BookOpen, List } from 'lucide-react-native';
 

@@ -7,9 +7,9 @@
  */
 
 import { parseRule, parseSingleRule, splitByAt } from './RuleAnalyzer';
-import { AnalyzeByCSS } from './AnalyzeByCSS';
+import { AnalyzeByCSS } from './AnalyzeByJSoup';
 import { AnalyzeByXPath } from './AnalyzeByXPath';
-import { AnalyzeByJSONPath } from './AnalyzeByJSONPath';
+import { AnalyzeByJSONPath } from './AnalyzeByJSonPath';
 import { AnalyzeByRegex } from './AnalyzeByRegex';
 import { JSEngine, JSContext } from './JSEngine';
 

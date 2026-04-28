@@ -8,9 +8,9 @@ import {
 } from 'react-native';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { BookSource } from '@/data/entities/BookSource';
-import { AnalyzeUrl } from '@/core/network/AnalyzeUrl';
+import { AnalyzeUrl } from '@/model/analyzeRule/AnalyzeUrl';
 import { httpFetch } from '@/core/network/HttpClient';
-import { AnalyzeRule } from '@/core/ruleEngine/AnalyzeRule';
+import { AnalyzeRule } from '@/model/analyzeRule/AnalyzeRule';
 import { router } from 'expo-router';
 
 interface ExploreItem {

@@ -9,7 +9,7 @@
  *  - URL 尾部 ,{...} JSON 参数（method/header/body/charset）
  */
 
-import { JSEngine } from '../ruleEngine/JSEngine';
+import { JSEngine } from './JSEngine';
 
 export type HttpMethod = 'GET' | 'POST';
 
