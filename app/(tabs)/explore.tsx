@@ -7,7 +7,7 @@ import {
   View, Text, FlatList, Pressable, StyleSheet, useColorScheme, ActivityIndicator,
 } from 'react-native';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
-import { BookSource } from '@/data/models/BookSource';
+import { BookSource } from '@/data/entities/BookSource';
 import { AnalyzeUrl } from '@/core/network/AnalyzeUrl';
 import { httpFetch } from '@/core/network/HttpClient';
 import { AnalyzeRule } from '@/core/ruleEngine/AnalyzeRule';

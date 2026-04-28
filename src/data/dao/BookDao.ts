@@ -2,8 +2,8 @@
  * BookDao — 书籍数据访问层
  */
 
-import { getDatabase } from '../database/AppDatabase';
-import { Book } from '../models/Book';
+import { getDatabase } from '../AppDatabase';
+import { Book } from '../entities/Book';
 
 function rowToBook(row: Record<string, unknown>): Book {
   return {

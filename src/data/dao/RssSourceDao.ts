@@ -2,8 +2,8 @@
  * RssSourceDao — CRUD for rss_sources table
  */
 
-import { getDatabase } from '../database/AppDatabase';
-import { RssSource } from '../models/RssSource';
+import { getDatabase } from '../AppDatabase';
+import { RssSource } from '../entities/RssSource';
 
 function rowToSource(row: Record<string, unknown>): RssSource {
   return {

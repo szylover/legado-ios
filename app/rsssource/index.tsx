@@ -10,7 +10,7 @@ import {
 import { Stack, router } from 'expo-router';
 import { Trash2, Plus } from 'lucide-react-native';
 import { RssSourceDao } from '@/data/dao/RssSourceDao';
-import { RssSource } from '@/data/models/RssSource';
+import { RssSource } from '@/data/entities/RssSource';
 
 export default function RssSourceManagerScreen() {
   const isDark = useColorScheme() === 'dark';
