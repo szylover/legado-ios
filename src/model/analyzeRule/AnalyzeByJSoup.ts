@@ -5,23 +5,24 @@
  */
 
 import * as cheerio from 'cheerio';
+import type { AnyNode, Element } from 'domhandler';
 
 export class AnalyzeByCSS {
   private $: cheerio.CheerioAPI;
-  private root: cheerio.Cheerio<cheerio.AnyNode>;
+  private root: cheerio.Cheerio<AnyNode>;
 
   constructor(html: string) {
-    this.$ = cheerio.load(html, { decodeEntities: false });
+    this.$ = cheerio.load(html, { xml: false } as cheerio.CheerioOptions);
     this.root = this.$.root();
   }
 
   /** 获取元素列表（对应 getElements） */
-  getElements(rule: string): cheerio.Cheerio<cheerio.Element>[] {
+  getElements(rule: string): cheerio.Cheerio<Element>[] {
     try {
       const elements = this.root.find(rule);
-      const result: cheerio.Cheerio<cheerio.Element>[] = [];
+      const result: cheerio.Cheerio<Element>[] = [];
       elements.each((_, el) => {
-        result.push(this.$(el));
+        result.push(this.$(el) as cheerio.Cheerio<Element>);
       });
       return result;
     } catch {
@@ -30,10 +31,9 @@ export class AnalyzeByCSS {
   }
 
   /** 从 elements 中按规则获取文本列表 */
-  getStringList(rule: string, elements?: cheerio.Cheerio<cheerio.Element>[]): string[] {
+  getStringList(rule: string, elements?: cheerio.Cheerio<Element>[]): string[] {
     const src = elements ?? this.getElements(rule);
     if (!elements) {
-      // rule 本身就是选择器，取文本
       return this.getElements(rule).map((el) => this.getTextFromElement(el, rule));
     }
     return src.map((el) => this.getTextFromElement(el, rule));
@@ -53,8 +53,7 @@ export class AnalyzeByCSS {
    *   "div@html"  → 取 innerHTML
    *   "div@text"  → 取 text()
    */
-  getStringFromElement(el: cheerio.Cheerio<cheerio.Element>, rule: string): string {
-    // 拆出属性后缀 @attr
+  getStringFromElement(el: cheerio.Cheerio<Element>, rule: string): string {
     const atMatch = rule.match(/@([a-zA-Z_:][a-zA-Z0-9_:\-.]*)$/);
     if (atMatch) {
       const attr = atMatch[1].toLowerCase();
@@ -63,7 +62,6 @@ export class AnalyzeByCSS {
       if (attr === 'outerhtml') return cheerio.load(el.toString()).html() ?? '';
       return el.attr(atMatch[1]) ?? '';
     }
-    // 没有属性后缀，先找子元素，找不到就取当前元素文本
     const selectorPart = rule.replace(/@[^@]*$/, '').trim();
     if (selectorPart) {
       const child = el.find(selectorPart);
@@ -72,7 +70,7 @@ export class AnalyzeByCSS {
     return el.text().trim();
   }
 
-  private getTextFromElement(el: cheerio.Cheerio<cheerio.Element>, rule: string): string {
+  private getTextFromElement(el: cheerio.Cheerio<Element>, rule: string): string {
     return this.getStringFromElement(el, rule);
   }
 

@@ -102,7 +102,7 @@ export async function getBookInfo(source: BookSource, book: Book): Promise<Parti
     intro: rule.intro ? analyzer.getString(rule.intro) : book.intro,
     coverUrl: rule.coverUrl ? analyzer.getString(rule.coverUrl) : book.coverUrl,
     kind: rule.kind ? analyzer.getString(rule.kind) : book.kind,
-    lastChapter: rule.lastChapter ? analyzer.getString(rule.lastChapter) : undefined,
+    latestChapterTitle: rule.lastChapter ? analyzer.getString(rule.lastChapter) : undefined,
     wordCount: rule.wordCount ? analyzer.getString(rule.wordCount) : book.wordCount,
     tocUrl: rule.tocUrl ? resolveUrl(analyzer.getString(rule.tocUrl), resp.url) : book.tocUrl,
   };
