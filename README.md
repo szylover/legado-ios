@@ -1,31 +1,65 @@
-# Legado iOS
+# legado web
 
-开源阅读 iOS 版 —— 基于 [legado (Android)](https://github.com/gedoor/legado) 功能复刻。
+> 开源阅读 legado 的 Web 版本，运行在浏览器中，通过 Safari 在 iPhone 上使用
+
+## 特性
+
+- 完整兼容 legado Android 书源 JSON 格式
+- 规则引擎：CSS/XPath/JSONPath/正则/JS
+- 本地 CORS 代理，绕过浏览器跨域限制
+- IndexedDB 存储（Dexie.js）
+- 移动端优先 UI，可添加到 iPhone 主屏幕
+
+## 快速开始
+
+```bash
+npm install
+npm run dev
+```
+
+打开 http://localhost:5173（手机和电脑在同一网络时，也可用手机 Safari 访问 `http://<你的IP>:5173`）
+
+`npm run dev` 会同时启动：
+- Vite 开发服务器（端口 5173）  
+- CORS 代理服务器（端口 3001）
+
+## 使用 Safari 访问
+
+1. 确保手机和电脑在同一 WiFi
+2. 运行 `npm run dev`  
+3. 用 Safari 打开 `http://<电脑IP>:5173`
+4. 点击分享 → 添加到主屏幕，即可像 App 一样使用
+
+## 书源导入
+
+1. 点击底部「书源」→「导入」
+2. 输入书源 JSON 地址或选择本地文件
+3. 点击「测试源」可使用内置测试书源
+
+## 项目结构
+
+```
+src/
+├── model/analyzeRule/   # 规则引擎（兼容 legado Android）
+├── data/
+│   ├── entities/        # 数据模型（BookSource, Book, BookChapter…）
+│   ├── dao/             # 数据访问层（Dexie.js）
+│   └── db.ts            # IndexedDB 数据库定义
+├── help/
+│   ├── http/            # HTTP 客户端 + Cookie 管理
+│   └── source/          # 书源/订阅源导入导出
+├── core/network/        # WebBook 书源网络层
+├── pages/               # 页面组件
+├── components/          # 公共组件
+└── styles/              # 全局样式
+scripts/
+└── cors-proxy.js        # 本地 CORS 代理服务器
+```
 
 ## 技术栈
-- Swift 5.9+
-- SwiftUI
-- Core Data（本地数据持久化）
-- JavaScriptCore（书源 JS 规则引擎）
-- SwiftSoup（HTML/CSS 解析）
 
-## 主要功能（规划中）
-- [ ] 书架（列表/网格/分组）
-- [ ] 书源管理与规则引擎
-- [ ] 在线搜书 / 发现
-- [ ] 阅读器（多翻页模式 + 排版自定义）
-- [ ] 本地 TXT / EPUB 阅读
-- [ ] RSS 订阅
-- [ ] 替换净化规则
-- [ ] 书签 / 划线
-- [ ] TTS 朗读
-
-## 开发阶段
-1. **Phase 1** 基础框架 + 数据层 + 书架 UI
-2. **Phase 2** 书源解析引擎（CSS / XPath / JSONPath / JS）
-3. **Phase 3** 阅读器
-4. **Phase 4** 搜索 / 发现 / RSS
-5. **Phase 5** 高级功能
-
-## 书源兼容性
-目标兼容 legado Android 书源格式（JSON），使用户可直接导入现有书源。
+- [Vite](https://vitejs.dev/) + React 18 + TypeScript
+- [Dexie.js](https://dexie.org/) — IndexedDB 封装
+- [React Router v6](https://reactrouter.com/) — 客户端路由
+- [cheerio](https://cheerio.js.org/) — HTML 解析（书源规则）
+- 本地 CORS 代理（Node.js）
