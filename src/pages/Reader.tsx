@@ -4,11 +4,13 @@ import { BookDao } from '@/data/dao/BookDao';
 import { BookChapterDao } from '@/data/dao/BookChapterDao';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { ReplaceRuleDao } from '@/data/dao/ReplaceRuleDao';
+import { BookmarkDao } from '@/data/dao/BookmarkDao';
 import { getChapterList, getContent } from '@/core/network/WebBook';
 import type { Book } from '@/data/entities/Book';
 import type { BookChapter } from '@/data/entities/BookChapter';
 import type { BookSource } from '@/data/entities/BookSource';
 import type { ReplaceRule } from '@/data/entities/ReplaceRule';
+import type { Bookmark } from '@/data/entities/Bookmark';
 
 const LS_FONT_SIZE = 'reader_font_size';
 const LS_LINE_HEIGHT = 'reader_line_height';
@@ -54,6 +56,9 @@ export default function Reader() {
   const [offline, setOffline] = useState(!navigator.onLine);
   const [showChapterList, setShowChapterList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [chapterBookmarked, setChapterBookmarked] = useState(false);
 
   // reader appearance settings
   const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem(LS_FONT_SIZE)) || 18);
@@ -132,6 +137,10 @@ export default function Reader() {
       }
     });
     BookDao.updateProgress(book.bookUrl, idx, 0);
+    // load bookmarks for current chapter
+    BookmarkDao.getByChapter(book.bookUrl, idx).then(bms => {
+      setChapterBookmarked(bms.length > 0);
+    });
   }, [idx, chapters]);
 
   // Persist font settings
@@ -172,8 +181,39 @@ export default function Reader() {
   const jumpToChapter = useCallback((i: number) => {
     setIdx(i);
     setShowChapterList(false);
+    setShowBookmarks(false);
     setShowCtrl(false);
   }, []);
+
+  const toggleBookmark = useCallback(async () => {
+    if (!book || !chapters[idx]) return;
+    const ch = chapters[idx];
+    if (chapterBookmarked) {
+      const bms = await BookmarkDao.getByChapter(book.bookUrl, idx);
+      await Promise.all(bms.map(b => b.id != null ? BookmarkDao.delete(b.id) : Promise.resolve()));
+      setChapterBookmarked(false);
+    } else {
+      const excerpt = content.replace(/\s+/g, ' ').slice(0, 80);
+      await BookmarkDao.add({
+        bookUrl: book.bookUrl,
+        chapterIndex: idx,
+        chapterTitle: ch.title,
+        chapterUrl: ch.url,
+        content: excerpt,
+        time: Date.now(),
+      });
+      setChapterBookmarked(true);
+    }
+  }, [book, chapters, idx, content, chapterBookmarked]);
+
+  const openBookmarks = useCallback(async () => {
+    if (!book) return;
+    const bms = await BookmarkDao.getByBook(book.bookUrl);
+    setBookmarks(bms);
+    setShowBookmarks(true);
+    setShowChapterList(false);
+    setShowSettings(false);
+  }, [book]);
 
   const downloadedPct = chapters.length ? Math.round((cachedCount / chapters.length) * 100) : 0;
 
@@ -185,11 +225,20 @@ export default function Reader() {
           <h2 style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{book?.name}</h2>
           {offline && <span style={{ fontSize: 11, color: '#f90', flexShrink: 0 }}>离线</span>}
           <button
-            onClick={e => { e.stopPropagation(); setShowChapterList(v => !v); setShowSettings(false); }}
+            onClick={e => { e.stopPropagation(); setShowChapterList(v => !v); setShowSettings(false); setShowBookmarks(false); }}
             style={{ color: 'var(--accent)', fontSize: 13, flexShrink: 0 }}
           >目录</button>
           <button
-            onClick={e => { e.stopPropagation(); setShowSettings(v => !v); setShowChapterList(false); }}
+            onClick={e => { e.stopPropagation(); toggleBookmark(); }}
+            style={{ color: chapterBookmarked ? '#f5c518' : 'var(--accent)', fontSize: 16, flexShrink: 0 }}
+            title={chapterBookmarked ? '取消书签' : '添加书签'}
+          >{chapterBookmarked ? '🔖' : '📑'}</button>
+          <button
+            onClick={e => { e.stopPropagation(); openBookmarks(); }}
+            style={{ color: 'var(--accent)', fontSize: 13, flexShrink: 0 }}
+          >书签</button>
+          <button
+            onClick={e => { e.stopPropagation(); setShowSettings(v => !v); setShowChapterList(false); setShowBookmarks(false); }}
             style={{ color: 'var(--accent)', fontSize: 13, flexShrink: 0 }}
           >Aa</button>
         </div>
@@ -198,7 +247,7 @@ export default function Reader() {
       <div
         className="reader-body"
         style={{ fontSize, lineHeight, color: theme.text, background: theme.bg }}
-        onClick={() => { if (!showChapterList && !showSettings) setShowCtrl(v => !v); }}
+        onClick={() => { if (!showChapterList && !showSettings && !showBookmarks) setShowCtrl(v => !v); }}
       >
         {loading
           ? <div style={{ color: 'var(--text2)', textAlign: 'center', marginTop: 40 }}>加载中…</div>
@@ -247,6 +296,72 @@ export default function Reader() {
                 {i === idx && <span style={{ fontSize: 9 }}>▶</span>}
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.title}</span>
                 {ch.cachedContent && <span style={{ fontSize: 10, color: 'var(--success)' }}>✓</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bookmarks drawer */}
+      {showBookmarks && (
+        <div
+          style={{
+            position: 'absolute', inset: 0, zIndex: 300, display: 'flex',
+            background: 'rgba(0,0,0,0.5)',
+          }}
+          onClick={() => setShowBookmarks(false)}
+        >
+          <div
+            style={{
+              width: '75%', maxWidth: 320, height: '100%',
+              background: 'var(--bg2)', overflowY: 'auto',
+              padding: '52px 0 20px',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ padding: '0 16px 12px', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+              书签 <span style={{ color: 'var(--text2)', fontWeight: 400 }}>({bookmarks.length})</span>
+            </div>
+            {bookmarks.length === 0 ? (
+              <div style={{ padding: '24px 16px', color: 'var(--text2)', fontSize: 13, textAlign: 'center' }}>
+                暂无书签<br />点击阅读器顶部「📑」添加
+              </div>
+            ) : bookmarks.map(bm => (
+              <div
+                key={bm.id}
+                onClick={() => jumpToChapter(bm.chapterIndex)}
+                style={{
+                  padding: '10px 16px',
+                  borderBottom: '1px solid var(--border)',
+                  cursor: 'pointer',
+                  color: bm.chapterIndex === idx ? 'var(--accent)' : 'var(--text)',
+                  background: bm.chapterIndex === idx ? 'rgba(79,195,247,0.08)' : 'transparent',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    🔖 {bm.chapterTitle}
+                  </span>
+                  <button
+                    onClick={async e => {
+                      e.stopPropagation();
+                      if (bm.id != null) {
+                        await BookmarkDao.delete(bm.id);
+                        setBookmarks(prev => prev.filter(b => b.id !== bm.id));
+                        if (bm.chapterIndex === idx) setChapterBookmarked(false);
+                      }
+                    }}
+                    style={{ fontSize: 11, color: 'var(--danger)', flexShrink: 0 }}
+                  >删除</button>
+                </div>
+                {bm.content && (
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {bm.content}
+                  </div>
+                )}
+                <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 3 }}>
+                  {new Date(bm.time).toLocaleDateString('zh-CN')}
+                </div>
               </div>
             ))}
           </div>
