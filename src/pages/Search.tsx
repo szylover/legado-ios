@@ -25,7 +25,6 @@ export default function Search() {
     aborted.current = false;
     setBusy(true); setResults([]); setSearchMeta(null);
     const sources = await BookSourceDao.getEnabledWithSearch();
-    console.log('[Search] sources with search rules:', sources.length, sources.slice(0, 3).map(s => s.bookSourceName));
     if (!sources.length) { alert('请先导入并启用书源'); setBusy(false); return; }
 
     const total = sources.length;
@@ -45,7 +44,6 @@ export default function Search() {
           console.warn('[Search] error from', batch[j]?.bookSourceName, ':', (r as PromiseRejectedResult).reason?.message ?? (r as PromiseRejectedResult).reason);
           continue;
         }
-        if (r.value.length > 0) console.log('[Search] got', r.value.length, 'results from', batch[j]?.bookSourceName);
         setResults(prev => {
           const add: SearchResult[] = [];
           for (const item of r.value) {
