@@ -44,14 +44,14 @@ export default function Search() {
           console.warn('[Search] error from', batch[j]?.bookSourceName, ':', (r as PromiseRejectedResult).reason?.message ?? (r as PromiseRejectedResult).reason);
           continue;
         }
-        setResults(prev => {
-          const add: SearchResult[] = [];
-          for (const item of r.value) {
-            const k = `${item.name}::${item.author}`;
-            if (!seen.has(k)) { seen.add(k); add.push(item); }
-          }
-          return [...prev, ...add];
-        });
+        // Compute new items outside the updater — seen must not be mutated
+        // inside setResults because React StrictMode double-invokes updaters
+        const add: SearchResult[] = [];
+        for (const item of r.value) {
+          const k = `${item.name}::${item.author}`;
+          if (!seen.has(k)) { seen.add(k); add.push(item); }
+        }
+        if (add.length > 0) setResults(prev => [...prev, ...add]);
       }
       setSearchMeta({ tried, total, errors, done: i + BATCH >= total });
     }
