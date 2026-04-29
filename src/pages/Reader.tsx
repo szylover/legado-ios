@@ -15,6 +15,7 @@ import type { Bookmark } from '@/data/entities/Bookmark';
 const LS_FONT_SIZE = 'reader_font_size';
 const LS_LINE_HEIGHT = 'reader_line_height';
 const LS_THEME = 'reader_theme';
+const LS_PAGE_MODE = 'reader_page_mode';
 
 function applyReplaceRules(text: string, rules: ReplaceRule[], origin: string): string {
   for (const rule of rules) {
@@ -41,6 +42,9 @@ const THEMES = [
   { key: 'light', bg: '#ffffff', text: '#1a1a1a', label: '白色' },
 ];
 
+/** 0 = 滚动, 1 = 平移滑动 */
+type PageMode = 0 | 1;
+
 export default function Reader() {
   const { bookUrl } = useParams<{ bookUrl: string }>();
   const [searchParams] = useSearchParams();
@@ -64,6 +68,11 @@ export default function Reader() {
   const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem(LS_FONT_SIZE)) || 18);
   const [lineHeight, setLineHeight] = useState(() => Number(localStorage.getItem(LS_LINE_HEIGHT)) || 2);
   const [themeKey, setThemeKey] = useState(() => localStorage.getItem(LS_THEME) || 'dark');
+  const [pageMode, setPageMode] = useState<PageMode>(() => (Number(localStorage.getItem(LS_PAGE_MODE)) as PageMode) || 0);
+
+  // slide animation state
+  const [slideAnim, setSlideAnim] = useState<'none' | 'exit-left' | 'exit-right' | 'enter-right' | 'enter-left'>('none');
+  const touchStartX = useRef<number | null>(null);
 
   // download state
   const [downloading, setDownloading] = useState(false);
@@ -147,6 +156,7 @@ export default function Reader() {
   useEffect(() => { localStorage.setItem(LS_FONT_SIZE, String(fontSize)); }, [fontSize]);
   useEffect(() => { localStorage.setItem(LS_LINE_HEIGHT, String(lineHeight)); }, [lineHeight]);
   useEffect(() => { localStorage.setItem(LS_THEME, themeKey); }, [themeKey]);
+  useEffect(() => { localStorage.setItem(LS_PAGE_MODE, String(pageMode)); }, [pageMode]);
 
   // Scroll active chapter into view when chapter list opens
   useEffect(() => {
@@ -215,6 +225,19 @@ export default function Reader() {
     setShowSettings(false);
   }, [book]);
 
+  /** Slide to adjacent chapter with animation */
+  const slideTo = useCallback((nextIdx: number, direction: 'prev' | 'next') => {
+    if (nextIdx < 0 || nextIdx >= chapters.length) return;
+    const exitAnim = direction === 'next' ? 'exit-left' : 'exit-right';
+    const enterAnim = direction === 'next' ? 'enter-right' : 'enter-left';
+    setSlideAnim(exitAnim);
+    setTimeout(() => {
+      setSlideAnim('none');
+      setIdx(nextIdx);
+      setSlideAnim(enterAnim);
+      setTimeout(() => setSlideAnim('none'), 320);
+    }, 260);
+  }, [chapters.length]);
   const downloadedPct = chapters.length ? Math.round((cachedCount / chapters.length) * 100) : 0;
 
   return (
@@ -244,16 +267,54 @@ export default function Reader() {
         </div>
       )}
 
-      <div
-        className="reader-body"
-        style={{ fontSize, lineHeight, color: theme.text, background: theme.bg }}
-        onClick={() => { if (!showChapterList && !showSettings && !showBookmarks) setShowCtrl(v => !v); }}
-      >
-        {loading
-          ? <div style={{ color: 'var(--text2)', textAlign: 'center', marginTop: 40 }}>加载中…</div>
-          : <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{content}</div>
-        }
-      </div>
+      {/* reader body — scroll or slide mode */}
+      {pageMode === 0 ? (
+        /* ── 滚动模式 ── */
+        <div
+          className="reader-body"
+          style={{ fontSize, lineHeight, color: theme.text, background: theme.bg }}
+          onClick={() => { if (!showChapterList && !showSettings && !showBookmarks) setShowCtrl(v => !v); }}
+        >
+          {loading
+            ? <div style={{ color: 'var(--text2)', textAlign: 'center', marginTop: 40 }}>加载中…</div>
+            : <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{content}</div>
+          }
+        </div>
+      ) : (
+        /* ── 平移滑动模式 ── */
+        <div
+          className="reader-body"
+          style={{
+            fontSize, lineHeight, color: theme.text, background: theme.bg,
+            overflow: 'hidden', position: 'relative',
+          }}
+          onClick={() => { if (!showChapterList && !showSettings && !showBookmarks) setShowCtrl(v => !v); }}
+          onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={e => {
+            if (touchStartX.current === null) return;
+            const dx = e.changedTouches[0].clientX - touchStartX.current;
+            touchStartX.current = null;
+            if (Math.abs(dx) < 50) return;
+            if (dx < 0 && idx < chapters.length - 1) slideTo(idx + 1, 'next');
+            if (dx > 0 && idx > 0) slideTo(idx - 1, 'prev');
+          }}
+        >
+          <div style={{
+            whiteSpace: 'pre-wrap', wordBreak: 'break-all', height: '100%', overflowY: 'auto',
+            transform: slideAnim === 'exit-left'  ? 'translateX(-100%)' :
+                       slideAnim === 'exit-right' ? 'translateX(100%)'  :
+                       slideAnim === 'enter-right'? 'translateX(100%)'  :
+                       slideAnim === 'enter-left' ? 'translateX(-100%)' : 'translateX(0)',
+            transition: slideAnim === 'none' ? 'none' : 'transform 0.28s ease',
+            opacity: slideAnim.startsWith('exit') ? 0 : 1,
+          }}>
+            {loading
+              ? <div style={{ color: 'var(--text2)', textAlign: 'center', marginTop: 40 }}>加载中…</div>
+              : content
+            }
+          </div>
+        </div>
+      )}
 
       {/* Chapter list drawer */}
       {showChapterList && (
@@ -397,7 +458,7 @@ export default function Reader() {
             </div>
 
             {/* Theme */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <span style={{ fontSize: 12, color: 'var(--text2)', width: 60 }}>背景</span>
               <div style={{ display: 'flex', gap: 10, flex: 1 }}>
                 {THEMES.map(t => (
@@ -410,6 +471,28 @@ export default function Reader() {
                       border: t.key === themeKey ? '2px solid var(--accent)' : '2px solid transparent',
                     }}
                   >{t.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Page mode */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)', width: 60 }}>翻页</span>
+              <div style={{ display: 'flex', gap: 10, flex: 1 }}>
+                {([
+                  { mode: 0 as PageMode, label: '滚动' },
+                  { mode: 1 as PageMode, label: '滑动' },
+                ] as const).map(({ mode, label }) => (
+                  <button
+                    key={mode}
+                    onClick={() => setPageMode(mode)}
+                    style={{
+                      flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 12,
+                      background: pageMode === mode ? 'var(--accent)' : 'var(--surface)',
+                      color: pageMode === mode ? '#000' : 'var(--text)',
+                      border: '2px solid transparent',
+                    }}
+                  >{label}</button>
                 ))}
               </div>
             </div>
@@ -432,11 +515,13 @@ export default function Reader() {
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-            <button className="btn btn-ghost btn-sm" disabled={idx <= 0} onClick={() => setIdx(i => i - 1)}>上一章</button>
+            <button className="btn btn-ghost btn-sm" disabled={idx <= 0}
+              onClick={() => pageMode === 1 ? slideTo(idx - 1, 'prev') : setIdx(i => i - 1)}>上一章</button>
             <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {chapters[idx]?.title}
             </div>
-            <button className="btn btn-ghost btn-sm" disabled={idx >= chapters.length - 1} onClick={() => setIdx(i => i + 1)}>下一章</button>
+            <button className="btn btn-ghost btn-sm" disabled={idx >= chapters.length - 1}
+              onClick={() => pageMode === 1 ? slideTo(idx + 1, 'next') : setIdx(i => i + 1)}>下一章</button>
           </div>
           {!downloading && (
             <button
