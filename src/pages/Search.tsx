@@ -12,8 +12,16 @@ export default function Search() {
   const [searchMeta, setSearchMeta] = useState<{ tried: number; errors: number; done: boolean } | null>(null);
   const aborted = useRef(false);
 
+  const cancelSearch = () => {
+    aborted.current = true;
+    setBusy(false);
+  };
+
   const doSearch = async () => {
     if (!kw.trim()) return;
+    // Cancel any in-progress search before starting a new one
+    aborted.current = true;
+    await new Promise(r => setTimeout(r, 0)); // flush pending batch
     aborted.current = false;
     setBusy(true); setResults([]); setSearchMeta(null);
     const sources = await BookSourceDao.getEnabled();
@@ -71,6 +79,12 @@ export default function Search() {
         <button className="btn btn-primary" onClick={doSearch} disabled={busy}>
           {busy ? '…' : '搜'}
         </button>
+        {busy && (
+          <button className="btn" onClick={cancelSearch}
+            style={{ marginLeft: 6, color: 'var(--text2)' }}>
+            取消
+          </button>
+        )}
       </div>
 
       {results.length === 0 && !busy && !searchMeta && (
