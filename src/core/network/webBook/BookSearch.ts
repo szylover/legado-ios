@@ -55,7 +55,7 @@ function parseSearchResults(
   if (!rule.bookList) return [];
 
   const analyzer = new AnalyzeRule(html, baseUrl);
-  const bookListHtmls = analyzer.getStringList(rule.bookList);
+  const bookListHtmls = analyzer.getElements(rule.bookList);
   if (!bookListHtmls.length) return [];
 
   return bookListHtmls.map((itemHtml) => {

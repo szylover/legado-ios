@@ -74,6 +74,11 @@ export class AnalyzeByCSS {
     return this.getStringFromElement(el, rule);
   }
 
+  /** 获取每个匹配元素的 outerHTML（用于 bookList 等需要继续解析子规则的场景） */
+  getOuterHtmlList(rule: string): string[] {
+    return this.getElements(rule).map(el => this.$.html(el) ?? '');
+  }
+
   /** 获取 HTML 字符串（用于下一级规则） */
   getHtml(rule?: string): string {
     if (!rule) return this.$.html() ?? '';

@@ -58,7 +58,7 @@ function parseToc(
 ): BookChapter[] {
   if (!rule.chapterList) return [];
   const analyzer = new AnalyzeRule(html, baseUrl);
-  const items = analyzer.getStringList(rule.chapterList);
+  const items = analyzer.getElements(rule.chapterList);
 
   return items.map((itemHtml, i) => {
     const a = new AnalyzeRule(itemHtml, baseUrl);
