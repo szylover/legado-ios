@@ -31,9 +31,10 @@ export default function Search() {
     let tried = 0, errors = 0;
     const seen = new Set<string>();
 
-    for (let i = 0; i < total; i += 5) {
+    const BATCH = 20;
+    for (let i = 0; i < total; i += BATCH) {
       if (aborted.current) break;
-      const batch = sources.slice(i, i + 5);
+      const batch = sources.slice(i, i + BATCH);
       const settled = await Promise.allSettled(batch.map(s => searchBooks(s, kw)));
       for (const r of settled) {
         tried++;
@@ -51,7 +52,7 @@ export default function Search() {
           return [...prev, ...add];
         });
       }
-      setSearchMeta({ tried, total, errors, done: i + 5 >= total });
+      setSearchMeta({ tried, total, errors, done: i + BATCH >= total });
     }
     setSearchMeta({ tried, total, errors, done: true });
     setBusy(false);
