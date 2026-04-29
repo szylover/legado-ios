@@ -117,6 +117,7 @@ function forward(target, req) {
         resolve({ statusCode: status, headers: proxyRes.headers, body: Buffer.concat(chunks) });
       });
     });
+    proxyReq.setTimeout(25000, () => { proxyReq.destroy(new Error('Request timeout')); });
     proxyReq.on('error', reject);
     if (body.length) proxyReq.write(body);
     proxyReq.end();
