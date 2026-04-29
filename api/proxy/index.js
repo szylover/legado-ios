@@ -67,8 +67,9 @@ function stripCorsHeaders(headers) {
   return out;
 }
 
-function forward(target, req) {
+function forward(target, req, redirects = 0) {
   return new Promise((resolve, reject) => {
+    if (redirects > 5) { reject(new Error('Too many redirects')); return; }
     const lib = target.protocol === 'https:' ? https : http;
     const skip = new Set(['host','connection','transfer-encoding','te','trailer','upgrade']);
     const fwdHeaders = {};
@@ -98,6 +99,25 @@ function forward(target, req) {
     };
 
     const proxyReq = lib.request(opts, (proxyRes) => {
+      const status = proxyRes.statusCode;
+      // Follow redirects (301, 302, 303, 307, 308)
+      if ([301, 302, 303, 307, 308].includes(status) && proxyRes.headers['location']) {
+        const loc = proxyRes.headers['location'];
+        let nextUrl;
+        try {
+          nextUrl = new URL(loc, target.href);
+        } catch {
+          reject(new Error(`Bad redirect location: ${loc}`)); return;
+        }
+        // Consume response body to free socket
+        proxyRes.resume();
+        // 303 and GET-redirects use GET with no body
+        const redirectReq = (status === 303 || req.method === 'GET')
+          ? { ...req, method: 'GET', rawBody: null }
+          : req;
+        forward(nextUrl, redirectReq, redirects + 1).then(resolve, reject);
+        return;
+      }
       const chunks = [];
       proxyRes.on('data', c => chunks.push(c));
       proxyRes.on('end', () => resolve({
