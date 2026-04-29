@@ -50,19 +50,22 @@ export class JSEngine {
    */
   static eval(code: string, context: JSContext = {}): unknown {
     try {
-      // 构建参数列表：注入 context 中所有变量
       const keys = Object.keys(context);
-      const values = Object.values(context);
+
+      // If code has no explicit return, append `return result` so that
+      // legado-style `result = "xxx"` blocks return the updated value.
+      const trimmed = code.trim();
+      const hasReturn = /\breturn\b/.test(trimmed);
+      const finalCode = hasReturn ? trimmed : `${trimmed}\nreturn result;`;
 
       const wrappedCode = `
 ${JS_EXTENSIONS}
 ${keys.map((k) => `var ${k} = __ctx__["${k}"];`).join('\n')}
-${code}
+${finalCode}
 `;
       // eslint-disable-next-line no-new-func
       const fn = new Function('__ctx__', wrappedCode);
       const result = fn({ ...context });
-      // 如果代码没有显式 return，尝试取 result 变量
       return result !== undefined ? result : context.result;
     } catch (e) {
       console.warn('[JSEngine] eval error:', e);

@@ -87,7 +87,10 @@ export class AnalyzeUrl {
   private evalInlineJs(url: string): string {
     if (!url.includes('{{')) return url;
     return url.replace(/\{\{([\s\S]*?)\}\}/g, (_, code) => {
-      const result = JSEngine.evalString(code.trim(), { ...this.ctx, result: '' });
+      const trimmed = code.trim();
+      // legado treats {{expr}} as a JS expression; wrap with return unless already present
+      const execCode = /\breturn\b/.test(trimmed) ? trimmed : `return (${trimmed})`;
+      const result = JSEngine.evalString(execCode, { ...this.ctx, result: '' });
       return result;
     });
   }
