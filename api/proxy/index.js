@@ -67,9 +67,8 @@ function stripCorsHeaders(headers) {
   return out;
 }
 
-function forward(target, req, redirects = 0) {
+function forward(target, req) {
   return new Promise((resolve, reject) => {
-    if (redirects > 5) { reject(new Error('Too many redirects')); return; }
     const lib = target.protocol === 'https:' ? https : http;
     const skip = new Set(['host','connection','transfer-encoding','te','trailer','upgrade']);
     const fwdHeaders = {};
@@ -99,34 +98,24 @@ function forward(target, req, redirects = 0) {
     };
 
     const proxyReq = lib.request(opts, (proxyRes) => {
-      const status = proxyRes.statusCode;
-      // Follow redirects (301, 302, 303, 307, 308)
-      if ([301, 302, 303, 307, 308].includes(status) && proxyRes.headers['location']) {
-        const loc = proxyRes.headers['location'];
-        let nextUrl;
-        try {
-          nextUrl = new URL(loc, target.href);
-        } catch {
-          reject(new Error(`Bad redirect location: ${loc}`)); return;
-        }
-        // Consume response body to free socket
-        proxyRes.resume();
-        // 303 and non-POST redirects switch to GET with no body
-        const redirectReq = {
-          method: (status === 303 || req.method === 'GET') ? 'GET' : req.method,
-          headers: req.headers,
-          rawBody: (status === 303 || req.method === 'GET') ? null : req.rawBody,
-        };
-        forward(nextUrl, redirectReq, redirects + 1).then(resolve, reject);
-        return;
-      }
       const chunks = [];
       proxyRes.on('data', c => chunks.push(c));
-      proxyRes.on('end', () => resolve({
-        statusCode: proxyRes.statusCode,
-        headers: proxyRes.headers,
-        body: Buffer.concat(chunks),
-      }));
+      proxyRes.on('end', () => {
+        const status = proxyRes.statusCode;
+        // Follow redirects internally (up to 5 hops)
+        if ([301, 302, 303, 307, 308].includes(status) && proxyRes.headers['location']) {
+          const loc = proxyRes.headers['location'];
+          let nextUrl;
+          try { nextUrl = new URL(loc, target.href); } catch { resolve({ statusCode: status, headers: proxyRes.headers, body: Buffer.concat(chunks) }); return; }
+          const nextMethod = (status === 303 || req.method === 'GET') ? 'GET' : req.method;
+          const nextBody = nextMethod === 'GET' ? null : req.rawBody;
+          const redirectCount = (req._redirects || 0) + 1;
+          if (redirectCount > 5) { resolve({ statusCode: status, headers: proxyRes.headers, body: Buffer.concat(chunks) }); return; }
+          forward(nextUrl, { method: nextMethod, headers: req.headers, rawBody: nextBody, _redirects: redirectCount }).then(resolve, reject);
+          return;
+        }
+        resolve({ statusCode: status, headers: proxyRes.headers, body: Buffer.concat(chunks) });
+      });
     });
     proxyReq.on('error', reject);
     if (body.length) proxyReq.write(body);
