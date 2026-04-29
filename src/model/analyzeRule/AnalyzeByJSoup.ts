@@ -74,7 +74,7 @@ export class AnalyzeByCSS {
       const found = base.find(selector);
 
       let items: Element[] = [];
-      found.each((_, el) => items.push(el));
+      found.each((_, el) => { items.push(el as Element); });
 
       // Apply sequential index selection (e.g., tag.td.2 → keep only index 2)
       for (const idx of indices) {
@@ -95,7 +95,6 @@ export class AnalyzeByCSS {
     } catch {
       return [];
     }
-  }
   }
 
   /** 按选择器获取单个字符串 */
