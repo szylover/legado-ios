@@ -57,13 +57,27 @@ export class AnalyzeRule {
 
   /**
    * 获取每个匹配元素的 outerHTML 列表
-   * 用于 bookList / exploreList 等"拆分元素后继续解析子规则"的场景
+   * 用于 bookList / exploreList / chapterList 等"拆分元素后继续解析子规则"的场景
+   * 支持多级 legado CSS 规则，如 "class.grid@tag.tr!0"
    */
   getElements(rule: string): string[] {
     if (!rule?.trim()) return [];
-    const html = this.toHtml(this.content);
+    const parts = splitByAt(rule);
+    let html = this.toHtml(this.content);
+
+    // Navigate through intermediate levels, narrowing to first matched element's HTML
+    for (let i = 0; i < parts.length - 1; i++) {
+      const analyzer = new AnalyzeByCSS(html);
+      const matched = analyzer.getElements(parts[i]);
+      if (!matched.length) return [];
+      html = analyzer['$'].html(matched[0]) ?? '';
+      if (!html) return [];
+    }
+
+    // Last level: return ALL matched elements as outerHTML
+    const lastPart = parts[parts.length - 1];
     const analyzer = new AnalyzeByCSS(html);
-    return analyzer.getOuterHtmlList(rule);
+    return analyzer.getOuterHtmlList(lastPart);
   }
 
   // ─── 私有实现 ─────────────────────────────────────────────────
