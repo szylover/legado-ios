@@ -85,7 +85,7 @@ export async function httpFetch(options: HttpOptions): Promise<HttpResponse> {
       const text = await resp.text();
       const respHeaders: Record<string, string> = {};
       resp.headers.forEach((v, k) => { respHeaders[k] = v; });
-      return { text, url: resp.url || url, statusCode: resp.status, headers: respHeaders };
+      return { text, url, statusCode: resp.status, headers: respHeaders };
     } catch (e) {
       lastError = e as Error;
       if (attempt < retry) await sleep(500 * (attempt + 1));

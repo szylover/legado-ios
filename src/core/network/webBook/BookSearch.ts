@@ -27,7 +27,11 @@ export async function searchBooks(
   keyword: string,
   page = 1,
 ): Promise<SearchResult[]> {
-  if (!source.searchUrl || !source.ruleSearch) return [];
+  console.log('[Search] called source=', source.bookSourceName, 'searchUrl=', source.searchUrl, 'hasRuleSearch=', !!source.ruleSearch);
+  if (!source.searchUrl || !source.ruleSearch) {
+    console.log('[Search] SKIP: no searchUrl or ruleSearch');
+    return [];
+  }
 
   const ctx: UrlContext = {
     baseUrl: source.bookSourceUrl,
@@ -46,7 +50,7 @@ export async function searchBooks(
   });
   console.log('[Search] status=', resp.url, 'htmlLen=', resp.text?.length);
 
-  return parseSearchResults(resp.text, resp.url, source.ruleSearch, source);
+  return parseSearchResults(resp.text, parsed.url, source.ruleSearch, source);
 }
 
 function parseSearchResults(
