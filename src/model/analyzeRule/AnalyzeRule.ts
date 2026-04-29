@@ -62,6 +62,16 @@ export class AnalyzeRule {
    */
   getElements(rule: string): string[] {
     if (!rule?.trim()) return [];
+
+    // Handle && (combine results from multiple selector paths, e.g. ".search@li!0&&.gengxin@li")
+    if (rule.includes('&&')) {
+      const results: string[] = [];
+      for (const part of rule.split('&&')) {
+        results.push(...this.getElements(part.trim()));
+      }
+      return results;
+    }
+
     const parts = splitByAt(rule);
     let html = this.toHtml(this.content);
 
