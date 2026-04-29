@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BookSourceImporter } from '@/help/source/BookSourceImporter';
 import { RssSourceImporter } from '@/help/source/RssSourceImporter';
 
-const BASE = 'https://raw.githubusercontent.com/shidahuilang/shuyuan-bak/refs/heads/main/';
+const BASE = 'https://cdn.jsdelivr.net/gh/shidahuilang/shuyuan-bak@main/';
 
 const PRESETS = [
   {
