@@ -64,7 +64,7 @@ function parseExploreResults(
 ): ExploreItem[] {
   if (!rule.bookList) return [];
   const analyzer = new AnalyzeRule(html, baseUrl);
-  const items = analyzer.getStringList(rule.bookList);
+  const items = analyzer.getElements(rule.bookList);
   if (!items.length) return [];
   return items
     .map(itemHtml => {

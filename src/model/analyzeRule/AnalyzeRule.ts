@@ -55,6 +55,17 @@ export class AnalyzeRule {
     return [];
   }
 
+  /**
+   * 获取每个匹配元素的 outerHTML 列表
+   * 用于 bookList / exploreList 等"拆分元素后继续解析子规则"的场景
+   */
+  getElements(rule: string): string[] {
+    if (!rule?.trim()) return [];
+    const html = this.toHtml(this.content);
+    const analyzer = new AnalyzeByCSS(html);
+    return analyzer.getOuterHtmlList(rule);
+  }
+
   // ─── 私有实现 ─────────────────────────────────────────────────
 
   private evalCandidate(rule: string): string[] {
