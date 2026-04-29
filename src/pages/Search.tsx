@@ -19,11 +19,11 @@ export default function Search() {
     const sources = await BookSourceDao.getEnabled();
     if (!sources.length) { alert('请先导入并启用书源'); setBusy(false); return; }
 
-    const limit = Math.min(sources.length, 20);
+    const total = sources.length;
     let tried = 0, errors = 0;
     const seen = new Set<string>();
 
-    for (let i = 0; i < limit; i += 5) {
+    for (let i = 0; i < total; i += 5) {
       if (aborted.current) break;
       const batch = sources.slice(i, i + 5);
       const settled = await Promise.allSettled(batch.map(s => searchBooks(s, kw)));
@@ -43,7 +43,7 @@ export default function Search() {
           return [...prev, ...add];
         });
       }
-      setSearchMeta({ tried, errors, done: i + 5 >= limit });
+      setSearchMeta({ tried, errors, done: i + 5 >= total });
     }
     setSearchMeta({ tried, errors, done: true });
     setBusy(false);
