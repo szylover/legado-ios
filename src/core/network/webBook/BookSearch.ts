@@ -37,12 +37,14 @@ export async function searchBooks(
   };
 
   const parsed = new AnalyzeUrl(source.searchUrl, ctx).parse();
+  console.log('[Search] url=', parsed.url, 'method=', parsed.method, 'body=', parsed.body);
 
   const resp = await httpFetch({
     ...parsed,
     sourceHeader: source.header,
     enableCookieJar: source.enabledCookieJar,
   });
+  console.log('[Search] status=', resp.url, 'htmlLen=', resp.text?.length);
 
   return parseSearchResults(resp.text, resp.url, source.ruleSearch, source);
 }
@@ -53,16 +55,18 @@ function parseSearchResults(
   rule: SearchRule,
   source: BookSource,
 ): SearchResult[] {
-  if (!rule.bookList) return [];
+  if (!rule.bookList) { console.log('[Search] no bookList rule'); return []; }
 
   const analyzer = new AnalyzeRule(html, baseUrl);
   const bookListHtmls = analyzer.getElements(rule.bookList);
+  console.log('[Search] bookList rule=', rule.bookList, '→', bookListHtmls.length, 'items');
   if (!bookListHtmls.length) return [];
 
   const results = bookListHtmls.map((itemHtml) => {
     const a = new AnalyzeRule(itemHtml, baseUrl);
     const name    = rule.name    ? a.getString(rule.name)                         : '';
     const bookUrl = rule.bookUrl ? resolveUrl(a.getString(rule.bookUrl), baseUrl) : '';
+    console.log('[Search] item name=', name, 'url=', bookUrl);
     return {
       name,
       author:      rule.author    ? a.getString(rule.author)                        : '',
