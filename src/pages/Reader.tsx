@@ -6,6 +6,7 @@ import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { ReplaceRuleDao } from '@/data/dao/ReplaceRuleDao';
 import { BookmarkDao } from '@/data/dao/BookmarkDao';
 import { getChapterList, getContent } from '@/core/network/WebBook';
+import { tts, isTtsSupported } from '@/help/tts/TtsService';
 import type { Book } from '@/data/entities/Book';
 import type { BookChapter } from '@/data/entities/BookChapter';
 import type { BookSource } from '@/data/entities/BookSource';
@@ -63,6 +64,12 @@ export default function Reader() {
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [chapterBookmarked, setChapterBookmarked] = useState(false);
+
+  // TTS state
+  const ttsSupported = isTtsSupported();
+  const [ttsActive, setTtsActive] = useState(false);
+  const [ttsPaused, setTtsPaused] = useState(false);
+  const [ttsRate, setTtsRate] = useState(1.0);
 
   // reader appearance settings
   const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem(LS_FONT_SIZE)) || 18);
@@ -158,6 +165,27 @@ export default function Reader() {
   useEffect(() => { localStorage.setItem(LS_THEME, themeKey); }, [themeKey]);
   useEffect(() => { localStorage.setItem(LS_PAGE_MODE, String(pageMode)); }, [pageMode]);
 
+  // Stop TTS when leaving reader
+  useEffect(() => () => { tts.stop(); }, []);
+
+  // When TTS is active and content changes, restart reading
+  useEffect(() => {
+    if (ttsActive && content) {
+      tts.speak(content, {
+        rate: ttsRate,
+        lang: 'zh-CN',
+        onEnd: () => {
+          // Auto advance to next chapter
+          setIdx(i => {
+            const next = i + 1;
+            return next < chapters.length ? next : i;
+          });
+        },
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, ttsActive]);
+
   // Scroll active chapter into view when chapter list opens
   useEffect(() => {
     if (showChapterList && chapterListRef.current) {
@@ -189,6 +217,9 @@ export default function Reader() {
   }
 
   const jumpToChapter = useCallback((i: number) => {
+    tts.stop();
+    setTtsActive(false);
+    setTtsPaused(false);
     setIdx(i);
     setShowChapterList(false);
     setShowBookmarks(false);
@@ -238,6 +269,34 @@ export default function Reader() {
       setTimeout(() => setSlideAnim('none'), 320);
     }, 260);
   }, [chapters.length]);
+
+  const toggleTts = useCallback(() => {
+    if (!ttsActive) {
+      setTtsActive(true);
+      setTtsPaused(false);
+      // content effect will trigger speak
+    } else if (ttsPaused) {
+      tts.resume();
+      setTtsPaused(false);
+    } else {
+      tts.pause();
+      setTtsPaused(true);
+    }
+  }, [ttsActive, ttsPaused]);
+
+  const stopTts = useCallback(() => {
+    tts.stop();
+    setTtsActive(false);
+    setTtsPaused(false);
+  }, []);
+
+  const adjustRate = useCallback((delta: number) => {
+    setTtsRate(r => {
+      const next = Math.min(2, Math.max(0.5, parseFloat((r + delta).toFixed(1))));
+      tts.setRate(next);
+      return next;
+    });
+  }, []);
   const downloadedPct = chapters.length ? Math.round((cachedCount / chapters.length) * 100) : 0;
 
   return (
@@ -502,6 +561,34 @@ export default function Reader() {
 
       {showCtrl && chapters.length > 0 && (
         <div className="reader-footer" style={{ flexDirection: 'column', gap: 6, padding: '8px 12px' }}>
+          {/* TTS controls */}
+          {ttsSupported && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+              <button
+                className={`btn btn-sm ${ttsActive ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ flexShrink: 0 }}
+                onClick={toggleTts}
+                title={ttsActive && !ttsPaused ? '暂停朗读' : ttsActive && ttsPaused ? '继续朗读' : '开始朗读'}
+              >
+                {ttsActive && !ttsPaused ? '⏸' : '🔊'}
+              </button>
+              {ttsActive && (
+                <>
+                  <button className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={stopTts}>⏹</button>
+                  <button className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={() => adjustRate(-0.1)}>慢</button>
+                  <span style={{ fontSize: 11, color: 'var(--text2)', minWidth: 28, textAlign: 'center' }}>{ttsRate.toFixed(1)}x</span>
+                  <button className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }} onClick={() => adjustRate(0.1)}>快</button>
+                  <span style={{ flex: 1, fontSize: 11, color: 'var(--accent)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                    {ttsPaused ? '已暂停' : '朗读中…'}
+                  </span>
+                </>
+              )}
+              {!ttsActive && (
+                <span style={{ flex: 1, fontSize: 11, color: 'var(--text2)' }}>朗读本章</span>
+              )}
+            </div>
+          )}
+
           {/* Download progress */}
           {downloading && (
             <div style={{ width: '100%', fontSize: 12, color: 'var(--text2)' }}>
