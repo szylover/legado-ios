@@ -24,7 +24,7 @@ export default function Search() {
     await new Promise(r => setTimeout(r, 0)); // flush pending batch
     aborted.current = false;
     setBusy(true); setResults([]); setSearchMeta(null);
-    const sources = await BookSourceDao.getEnabled();
+    const sources = await BookSourceDao.getEnabledWithSearch();
     if (!sources.length) { alert('请先导入并启用书源'); setBusy(false); return; }
 
     const total = sources.length;

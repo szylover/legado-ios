@@ -3,7 +3,16 @@ import type { BookSource } from '../entities/BookSource';
 
 export const BookSourceDao = {
   getAll: () => db.bookSources.orderBy('bookSourceName').toArray(),
-  getEnabled: () => db.bookSources.filter(s => s.enabled).sortBy('weight'),
+  // Sort descending: higher weight = more reliable, try first
+  getEnabled: () =>
+    db.bookSources.filter(s => s.enabled).sortBy('weight').then(arr => arr.reverse()),
+
+  // Only sources with search rules — skips residual/incomplete entries
+  getEnabledWithSearch: () =>
+    db.bookSources
+      .filter(s => s.enabled && !!s.searchUrl && !!s.ruleSearch)
+      .sortBy('weight')
+      .then(arr => arr.reverse()),
   getByUrl: (url: string) => db.bookSources.get(url),
 
   async upsert(source: BookSource): Promise<void> {
