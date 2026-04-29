@@ -21,9 +21,15 @@ export interface HttpOptions extends ParsedUrl {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+export const LS_DIRECT_MODE = 'legado_direct_mode';
+
 /** 代理 URL：始终使用相对路径 /api/proxy（开发时 Vite 转发到 :3001，生产时 Azure Function） */
 function proxyUrl(targetUrl: string): string {
   return `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+}
+
+export function isDirectMode(): boolean {
+  return localStorage.getItem(LS_DIRECT_MODE) === '1';
 }
 
 export async function httpFetch(options: HttpOptions): Promise<HttpResponse> {
@@ -56,8 +62,8 @@ export async function httpFetch(options: HttpOptions): Promise<HttpResponse> {
       ? 'application/json' : 'application/x-www-form-urlencoded';
   }
 
-  // Web: route through local CORS proxy
-  const fetchUrl = proxyUrl(url);
+  // Web: route through local CORS proxy, or direct if direct mode is on
+  const fetchUrl = isDirectMode() ? url : proxyUrl(url);
 
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= retry; attempt++) {
