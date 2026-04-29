@@ -13,6 +13,7 @@ import RssArticleList from './pages/RssArticleList';
 import RssArticleViewer from './pages/RssArticleViewer';
 import Explore from './pages/Explore';
 import ReplaceRules from './pages/ReplaceRules';
+import BackupRestore from './pages/BackupRestore';
 
 export const router = createHashRouter([
   {
@@ -30,6 +31,7 @@ export const router = createHashRouter([
       { path: 'explore', element: <Explore /> },
       { path: 'settings', element: <Settings /> },
       { path: 'replace-rules', element: <ReplaceRules /> },
+      { path: 'backup', element: <BackupRestore /> },
     ],
   },
   { path: '/reader/:bookUrl', element: <Reader /> },
