@@ -3,23 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { BookSourceImporter } from '@/help/source/BookSourceImporter';
 import { RssSourceImporter } from '@/help/source/RssSourceImporter';
 
-const BASE = 'https://cdn.jsdelivr.net/gh/shidahuilang/shuyuan-bak@main/';
+const BASE = 'https://raw.githubusercontent.com/shidahuilang/shuyuan-bak/main/';
 
 const PRESETS = [
   {
     label: '🐺 大灰狼订阅源',
     desc: '精选付费+免费源',
     url: BASE + '%E5%A4%A7%E7%81%B0%E7%8B%BC%E8%AE%A2%E9%98%85%E6%BA%90.json',
+    direct: true,
   },
   {
     label: '⭐ 精选书源',
     desc: '推荐，约 16 MB',
     url: BASE + 'good.json',
+    direct: true,
   },
   {
     label: '📦 完整书源库',
     desc: '全量合集，约 28 MB，较慢',
     url: BASE + 'book.json',
+    direct: true,
   },
 ];
 
@@ -39,10 +42,12 @@ export default function BookSourceImport() {
       : BookSourceImporter.importFromJson(text);
   }
 
-  async function fromUrl(target: string) {
+  async function fromUrl(target: string, direct = false) {
     setSt({ phase: 'loading', msg: '正在下载…' }); setPct(10);
     try {
-      const resp = await fetch(`/api/proxy?url=${encodeURIComponent(target)}`);
+      // Preset URLs support CORS — fetch directly in browser to avoid proxy size/IP limits
+      const fetchUrl = direct ? target : `/api/proxy?url=${encodeURIComponent(target)}`;
+      const resp = await fetch(fetchUrl);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       setPct(50); setSt({ phase: 'loading', msg: '解析导入中…' });
       const r = await importText(await resp.text());
@@ -85,7 +90,7 @@ export default function BookSourceImport() {
               <button
                 className="btn btn-primary btn-sm"
                 disabled={st.phase === 'loading'}
-                onClick={() => fromUrl(p.url)}
+                onClick={() => fromUrl(p.url, p.direct)}
               >导入</button>
             </div>
           ))}
