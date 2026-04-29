@@ -76,7 +76,6 @@ function forward(target, req) {
       if (!skip.has(k.toLowerCase())) fwdHeaders[k] = v;
     }
     fwdHeaders['host'] = target.host;
-    // Mimic a real browser so novel sites don't reject server-side requests
     if (!fwdHeaders['user-agent']) {
       fwdHeaders['user-agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
     }
@@ -100,25 +99,18 @@ function forward(target, req) {
     const proxyReq = lib.request(opts, (proxyRes) => {
       const chunks = [];
       proxyRes.on('data', c => chunks.push(c));
-      proxyRes.on('end', () => {
-        const status = proxyRes.statusCode;
-        // Follow redirects internally (up to 5 hops)
-        if ([301, 302, 303, 307, 308].includes(status) && proxyRes.headers['location']) {
-          const loc = proxyRes.headers['location'];
-          let nextUrl;
-          try { nextUrl = new URL(loc, target.href); } catch { resolve({ statusCode: status, headers: proxyRes.headers, body: Buffer.concat(chunks) }); return; }
-          const nextMethod = (status === 303 || req.method === 'GET') ? 'GET' : req.method;
-          const nextBody = nextMethod === 'GET' ? null : req.rawBody;
-          const redirectCount = (req._redirects || 0) + 1;
-          if (redirectCount > 5) { resolve({ statusCode: status, headers: proxyRes.headers, body: Buffer.concat(chunks) }); return; }
-          forward(nextUrl, { method: nextMethod, headers: req.headers, rawBody: nextBody, _redirects: redirectCount }).then(resolve, reject);
-          return;
-        }
-        resolve({ statusCode: status, headers: proxyRes.headers, body: Buffer.concat(chunks) });
-      });
+      proxyRes.on('end', () => resolve({
+        statusCode: proxyRes.statusCode,
+        headers: proxyRes.headers,
+        body: Buffer.concat(chunks),
+      }));
     });
     proxyReq.setTimeout(25000, () => { proxyReq.destroy(new Error('Request timeout')); });
     proxyReq.on('error', reject);
+    if (body.length) proxyReq.write(body);
+    proxyReq.end();
+  });
+}
     if (body.length) proxyReq.write(body);
     proxyReq.end();
   });
