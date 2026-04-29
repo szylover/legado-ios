@@ -54,7 +54,7 @@ module.exports = async function (context, req) {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PROPFIND, MKCOL, COPY, MOVE, OPTIONS',
     'Access-Control-Allow-Headers': '*',
   };
 }

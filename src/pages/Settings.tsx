@@ -63,6 +63,19 @@ export default function Settings() {
         )}
 
         <div className="card">
+          <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>数据管理</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ justifyContent: 'flex-start', gap: 10 }}
+              onClick={() => navigate('/backup')}
+            >
+              <span>☁️</span> 备份与恢复（本地 / WebDAV）
+            </button>
+          </div>
+        </div>
+
+        <div className="card">
           <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>关于</div>
           <div style={{ fontSize: 15, fontWeight: 500 }}>阅读 · legado web</div>
           <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
