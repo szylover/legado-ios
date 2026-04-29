@@ -37,6 +37,7 @@ export async function searchBooks(
   };
 
   const parsed = new AnalyzeUrl(source.searchUrl, ctx).parse();
+
   const resp = await httpFetch({
     ...parsed,
     sourceHeader: source.header,
@@ -58,12 +59,14 @@ function parseSearchResults(
   const bookListHtmls = analyzer.getElements(rule.bookList);
   if (!bookListHtmls.length) return [];
 
-  return bookListHtmls.map((itemHtml) => {
+  const results = bookListHtmls.map((itemHtml) => {
     const a = new AnalyzeRule(itemHtml, baseUrl);
+    const name    = rule.name    ? a.getString(rule.name)                         : '';
+    const bookUrl = rule.bookUrl ? resolveUrl(a.getString(rule.bookUrl), baseUrl) : '';
     return {
-      name:        rule.name      ? a.getString(rule.name)                          : '',
+      name,
       author:      rule.author    ? a.getString(rule.author)                        : '',
-      bookUrl:     rule.bookUrl   ? resolveUrl(a.getString(rule.bookUrl), baseUrl)  : '',
+      bookUrl,
       originUrl:   source.bookSourceUrl,
       originName:  source.bookSourceName,
       coverUrl:    rule.coverUrl  ? a.getString(rule.coverUrl)                      : undefined,
@@ -73,6 +76,7 @@ function parseSearchResults(
       wordCount:   rule.wordCount ? a.getString(rule.wordCount)                     : undefined,
     };
   }).filter(r => r.name && r.bookUrl);
+  return results;
 }
 
 function resolveUrl(url: string, base: string): string {

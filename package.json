@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"node scripts/cors-proxy.js\"",
+    "dev": "concurrently \"vite\" \"node scripts/cors-proxy.cjs\"",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host",
-    "proxy": "node scripts/cors-proxy.js",
+    "proxy": "node scripts/cors-proxy.cjs",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
