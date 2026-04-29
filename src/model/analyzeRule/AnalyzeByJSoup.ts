@@ -69,6 +69,20 @@ export class AnalyzeByCSS {
    */
   getElements(rule: string, scope?: cheerio.Cheerio<AnyNode>): cheerio.Cheerio<Element>[] {
     try {
+      // text.xxx — find elements whose own text contains xxx
+      if (rule.trimStart().startsWith('text.')) {
+        const searchText = rule.trimStart().slice(5);
+        const results: Element[] = [];
+        const base = scope ?? this.root;
+        base.find('*').each((_, el) => {
+          const ownText = this.$(el).contents()
+            .filter((_2, n) => (n as any).nodeType === 3)
+            .map((_2, n) => this.$(n as any).text()).get().join('').trim();
+          if (ownText.includes(searchText)) results.push(el as Element);
+        });
+        return results.map(el => this.$(el) as cheerio.Cheerio<Element>);
+      }
+
       const { selector, indices, exclude } = parseLegadoSelector(rule);
       const base = scope ?? this.root;
       const found = base.find(selector);
@@ -119,6 +133,13 @@ export class AnalyzeByCSS {
         if (rule === 'text') return [el.text().trim()].filter(Boolean);
         if (rule === 'html' || rule === 'innerhtml') return [el.html() ?? ''].filter(Boolean);
         if (rule === 'outerhtml') return [this.$.html(el as any) ?? ''].filter(Boolean);
+        if (rule.toLowerCase() === 'textnodes') {
+          const texts = (el as any).contents()
+            .filter((_: any, n: any) => n.nodeType === 3)
+            .map((_: any, n: any) => this.$(n).text()).get()
+            .filter((t: string) => t.trim());
+          return texts.length ? [texts.join('\n')] : [];
+        }
         const attr = el.attr(rule);
         if (attr !== undefined) return [attr];
       }
@@ -142,6 +163,13 @@ export class AnalyzeByCSS {
       if (attr === 'html' || attr === 'innerhtml') return el.html() ?? '';
       if (attr === 'text') return el.text().trim();
       if (attr === 'outerhtml') return this.$.html(el as any) ?? '';
+      if (attr === 'textnodes') {
+        const texts = (el as any).contents()
+          .filter((_: any, n: any) => n.nodeType === 3)
+          .map((_: any, n: any) => this.$(n).text()).get()
+          .filter((t: string) => t.trim());
+        return texts.join('\n');
+      }
       // Find child matching selectorPart, then get attribute from it (or el itself)
       const selectorPart = rule.slice(0, rule.lastIndexOf('@')).trim();
       if (selectorPart) {

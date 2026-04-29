@@ -5,7 +5,7 @@ import { BookChapterDao } from '@/data/dao/BookChapterDao';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { ReplaceRuleDao } from '@/data/dao/ReplaceRuleDao';
 import { BookmarkDao } from '@/data/dao/BookmarkDao';
-import { getChapterList, getContent } from '@/core/network/WebBook';
+import { getChapterList, getContent, getBookInfo } from '@/core/network/WebBook';
 import { tts, isTtsSupported } from '@/help/tts/TtsService';
 import type { Book } from '@/data/entities/Book';
 import type { BookChapter } from '@/data/entities/BookChapter';
@@ -123,11 +123,23 @@ export default function Reader() {
     }
     const src = await BookSourceDao.getByUrl(b.origin);
     if (!src) return;
-    const list = await getChapterList(src, b);
+
+    // If tocUrl hasn't been resolved (still equals bookUrl), fetch book info first
+    let bookForToc = b;
+    if (b.tocUrl === b.bookUrl && src.ruleBookInfo?.tocUrl) {
+      const info = await getBookInfo(src, b).catch(() => ({}));
+      bookForToc = { ...b, ...info };
+      if ((info as any).tocUrl) {
+        // Persist resolved tocUrl so we don't re-fetch next time
+        await BookDao.upsert(bookForToc);
+      }
+    }
+
+    const list = await getChapterList(src, bookForToc);
     await BookChapterDao.insertMany(list);
     setChapters(list);
     // Update total chapter count
-    await BookDao.upsert({ ...b, totalChapterNum: list.length, latestChapterTitle: list[list.length - 1]?.title });
+    await BookDao.upsert({ ...bookForToc, totalChapterNum: list.length, latestChapterTitle: list[list.length - 1]?.title });
   }
 
   useEffect(() => {

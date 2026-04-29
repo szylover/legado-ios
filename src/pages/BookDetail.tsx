@@ -45,22 +45,23 @@ export default function BookDetail() {
       const src = await BookSourceDao.getByUrl(book.origin);
       if (!src) { setError('找不到书源'); return; }
 
-      // Refresh book info (cover, intro, latest chapter)
+      // Refresh book info (cover, intro, latest chapter, and resolved tocUrl)
       const info = await getBookInfo(src, book).catch(() => ({}));
+      const updatedBook: Book = { ...book, ...info };
 
-      // Refresh chapter list
-      const list = await getChapterList(src, book);
+      // Refresh chapter list using the resolved tocUrl
+      const list = await getChapterList(src, updatedBook);
       await BookChapterDao.deleteByBook(book.bookUrl);
       await BookChapterDao.insertMany(list);
       setChapters(list);
 
-      const updated: Book = {
-        ...book, ...info,
+      const finalBook: Book = {
+        ...updatedBook,
         totalChapterNum: list.length,
         latestChapterTitle: list[list.length - 1]?.title ?? book.latestChapterTitle,
       };
-      await BookDao.upsert(updated);
-      setBook(updated);
+      await BookDao.upsert(finalBook);
+      setBook(finalBook);
     } catch (e) {
       setError(`刷新失败: ${(e as Error).message}`);
     } finally {
