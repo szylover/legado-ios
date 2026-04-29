@@ -43,6 +43,7 @@ export async function searchBooks(
     sourceHeader: source.header,
     enableCookieJar: source.enabledCookieJar,
   });
+  console.log('[BookSearch]', source.bookSourceName, 'url=', parsed.url, 'status=', resp.statusCode, 'len=', resp.text?.length);
 
   return parseSearchResults(resp.text, parsed.url, source.ruleSearch, source);
 }
