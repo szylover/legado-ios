@@ -15,7 +15,8 @@ export const RssSourceDao = {
     }
   },
   delete: (url: string) => db.rssSources.delete(url),
-  bulkDelete: (urls: string[]) => db.rssSources.bulkDelete(urls),
+  bulkDelete: (urls: string[]) =>
+    db.transaction('rw', db.rssSources, () => db.rssSources.bulkDelete(urls)),
   async setEnabled(url: string, enabled: boolean): Promise<void> {
     await db.rssSources.update(url, { enabled });
   },

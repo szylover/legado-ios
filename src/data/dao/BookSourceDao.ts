@@ -24,7 +24,8 @@ export const BookSourceDao = {
   },
 
   delete: (url: string) => db.bookSources.delete(url),
-  bulkDelete: (urls: string[]) => db.bookSources.bulkDelete(urls),
+  bulkDelete: (urls: string[]) =>
+    db.transaction('rw', db.bookSources, () => db.bookSources.bulkDelete(urls)),
 
   async setEnabled(url: string, enabled: boolean): Promise<void> {
     await db.bookSources.update(url, { enabled });
