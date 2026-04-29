@@ -16,7 +16,7 @@ export class AnalyzeByCSS {
     this.root = this.$.root();
   }
 
-  /** 获取元素列表（对应 getElements） */
+  /** 获取元素列表 */
   getElements(rule: string): cheerio.Cheerio<Element>[] {
     try {
       const elements = this.root.find(rule);
@@ -30,18 +30,33 @@ export class AnalyzeByCSS {
     }
   }
 
-  /** 从 elements 中按规则获取文本列表 */
-  getStringList(rule: string, elements?: cheerio.Cheerio<Element>[]): string[] {
-    const src = elements ?? this.getElements(rule);
-    if (!elements) {
-      return this.getElements(rule).map((el) => this.getTextFromElement(el, rule));
-    }
-    return src.map((el) => this.getTextFromElement(el, rule));
-  }
-
   /** 按选择器获取单个字符串 */
   getString(rule: string): string {
     return this.getStringList(rule)[0] ?? '';
+  }
+
+  /**
+   * 获取文本/属性值列表。
+   * 当 CSS 选择器匹配为空且 rule 是纯标识符时（如 "href"/"src"/"text"），
+   * fallback 为从根元素取属性或特殊属性——用于多级规则最后一步的属性提取。
+   */
+  getStringList(rule: string): string[] {
+    const matched = this.getElements(rule);
+    if (matched.length > 0) {
+      return matched.map(el => this.getTextFromElement(el, rule));
+    }
+    // Attribute / special-prop fallback for identifiers like "href", "src", "text"
+    if (/^[a-zA-Z][a-zA-Z0-9_:-]*$/.test(rule)) {
+      const el = this.root.find('body').children().first();
+      if (el.length) {
+        if (rule === 'text') return [el.text().trim()].filter(Boolean);
+        if (rule === 'html' || rule === 'innerhtml') return [el.html() ?? ''].filter(Boolean);
+        if (rule === 'outerhtml') return [this.$.html(el as any) ?? ''].filter(Boolean);
+        const attr = el.attr(rule);
+        if (attr !== undefined) return [attr];
+      }
+    }
+    return [];
   }
 
   /**
@@ -59,7 +74,14 @@ export class AnalyzeByCSS {
       const attr = atMatch[1].toLowerCase();
       if (attr === 'html' || attr === 'innerhtml') return el.html() ?? '';
       if (attr === 'text') return el.text().trim();
-      if (attr === 'outerhtml') return cheerio.load(el.toString()).html() ?? '';
+      if (attr === 'outerhtml') return this.$.html(el as any) ?? '';
+      // Find child matching selectorPart, then get attribute from it (or el itself)
+      const selectorPart = rule.slice(0, rule.lastIndexOf('@')).trim();
+      if (selectorPart) {
+        const child = el.find(selectorPart);
+        const target = child.length ? child.first() : el;
+        return target.attr(atMatch[1]) ?? '';
+      }
       return el.attr(atMatch[1]) ?? '';
     }
     const selectorPart = rule.replace(/@[^@]*$/, '').trim();
@@ -74,7 +96,12 @@ export class AnalyzeByCSS {
     return this.getStringFromElement(el, rule);
   }
 
-  /** 获取每个匹配元素的 outerHTML（用于 bookList 等需要继续解析子规则的场景） */
+  /** 获取第一个匹配元素的 outerHTML（中间步骤用，保留 HTML 上下文） */
+  getFirstElementOuterHtml(rule: string): string {
+    return this.getOuterHtmlList(rule)[0] ?? '';
+  }
+
+  /** 获取每个匹配元素的 outerHTML（bookList / chapterList 拆分用） */
   getOuterHtmlList(rule: string): string[] {
     return this.getElements(rule).map(el => this.$.html(el) ?? '');
   }
@@ -86,3 +113,4 @@ export class AnalyzeByCSS {
     return el.html() ?? '';
   }
 }
+

@@ -112,7 +112,12 @@ export class AnalyzeRule {
         } else {
           const html = this.toHtml(input);
           const analyzer = new AnalyzeByCSS(html);
-          result = returnList ? analyzer.getStringList(parsed.value) : analyzer.getString(parsed.value);
+          if (returnList) {
+            result = analyzer.getStringList(parsed.value);
+          } else {
+            // Non-last step: return outerHTML to preserve element context for subsequent @attr extraction
+            result = analyzer.getFirstElementOuterHtml(parsed.value) || analyzer.getString(parsed.value);
+          }
         }
         break;
       }
