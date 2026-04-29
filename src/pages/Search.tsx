@@ -9,22 +9,31 @@ export default function Search() {
   const [kw, setKw] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [busy, setBusy] = useState(false);
+  const [searchMeta, setSearchMeta] = useState<{ tried: number; errors: number; done: boolean } | null>(null);
   const aborted = useRef(false);
 
   const doSearch = async () => {
     if (!kw.trim()) return;
     aborted.current = false;
-    setBusy(true); setResults([]);
+    setBusy(true); setResults([]); setSearchMeta(null);
     const sources = await BookSourceDao.getEnabled();
     if (!sources.length) { alert('请先导入并启用书源'); setBusy(false); return; }
 
+    const limit = Math.min(sources.length, 20);
+    let tried = 0, errors = 0;
     const seen = new Set<string>();
-    for (let i = 0; i < Math.min(sources.length, 20); i += 5) {
+
+    for (let i = 0; i < limit; i += 5) {
       if (aborted.current) break;
       const batch = sources.slice(i, i + 5);
       const settled = await Promise.allSettled(batch.map(s => searchBooks(s, kw)));
       for (const r of settled) {
-        if (r.status !== 'fulfilled') continue;
+        tried++;
+        if (r.status !== 'fulfilled') {
+          errors++;
+          console.warn('[Search] error:', (r as PromiseRejectedResult).reason);
+          continue;
+        }
         setResults(prev => {
           const add: SearchResult[] = [];
           for (const item of r.value) {
@@ -34,7 +43,9 @@ export default function Search() {
           return [...prev, ...add];
         });
       }
+      setSearchMeta({ tried, errors, done: i + 5 >= limit });
     }
+    setSearchMeta({ tried, errors, done: true });
     setBusy(false);
   };
 
@@ -62,8 +73,17 @@ export default function Search() {
         </button>
       </div>
 
-      {results.length === 0 && !busy && (
+      {results.length === 0 && !busy && !searchMeta && (
         <div className="empty"><p>输入书名或作者搜索</p></div>
+      )}
+      {results.length === 0 && !busy && searchMeta?.done && (
+        <div className="empty">
+          <p>无结果</p>
+          <p style={{ fontSize: 12, color: 'var(--text2)' }}>
+            搜索了 {searchMeta.tried} 个书源
+            {searchMeta.errors > 0 && `，${searchMeta.errors} 个请求失败（网络或书源规则问题），请打开浏览器控制台查看详情`}
+          </p>
+        </div>
       )}
 
       <div className="page-body" style={{ paddingTop: 0 }}>
@@ -92,7 +112,11 @@ export default function Search() {
             <button className="btn btn-sm btn-primary" onClick={() => addBook(r)}>加入书架</button>
           </div>
         ))}
-        {busy && <div style={{ padding: 20, textAlign: 'center', color: 'var(--text2)' }}>搜索中…</div>}
+        {busy && (
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text2)' }}>
+            搜索中… {searchMeta ? `(${searchMeta.tried} 个书源已完成，${searchMeta.errors} 个失败)` : ''}
+          </div>
+        )}
       </div>
     </div>
   );
