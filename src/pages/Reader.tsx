@@ -3,14 +3,35 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookDao } from '@/data/dao/BookDao';
 import { BookChapterDao } from '@/data/dao/BookChapterDao';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
+import { ReplaceRuleDao } from '@/data/dao/ReplaceRuleDao';
 import { getChapterList, getContent } from '@/core/network/WebBook';
 import type { Book } from '@/data/entities/Book';
 import type { BookChapter } from '@/data/entities/BookChapter';
 import type { BookSource } from '@/data/entities/BookSource';
+import type { ReplaceRule } from '@/data/entities/ReplaceRule';
 
 const LS_FONT_SIZE = 'reader_font_size';
 const LS_LINE_HEIGHT = 'reader_line_height';
 const LS_THEME = 'reader_theme';
+
+function applyReplaceRules(text: string, rules: ReplaceRule[], origin: string): string {
+  for (const rule of rules) {
+    if (rule.scope) {
+      const scopes = rule.scope.split(',').map(s => s.trim());
+      if (!scopes.includes(origin)) continue;
+    }
+    try {
+      if (rule.isRegex) {
+        text = text.replace(new RegExp(rule.pattern, 'g'), rule.replacement);
+      } else {
+        text = text.split(rule.pattern).join(rule.replacement);
+      }
+    } catch {
+      // skip invalid regex
+    }
+  }
+  return text;
+}
 
 const THEMES = [
   { key: 'dark',  bg: '#1a1a2e', text: '#e0e0e0', label: '深色' },
@@ -98,7 +119,9 @@ export default function Reader() {
     setContent('');
     BookSourceDao.getByUrl(book.origin).then(async src => {
       try {
-        const text = src ? await getContent(src, book, ch) : '找不到书源';
+        const rawText = src ? await getContent(src, book, ch) : '找不到书源';
+        const enabledRules = await ReplaceRuleDao.getEnabled();
+        const text = applyReplaceRules(rawText, enabledRules, book.origin);
         setContent(text);
         await BookChapterDao.cacheContent(book.bookUrl, ch.url, text);
         setCachedCount(c => c + 1);

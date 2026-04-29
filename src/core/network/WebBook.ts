@@ -8,3 +8,5 @@ export { searchBooks }       from './webBook/BookSearch';
 export { getBookInfo }       from './webBook/BookInfo';
 export { getChapterList }    from './webBook/BookChapterList';
 export { getContent }        from './webBook/BookContent';
+export type { ExploreItem }  from './webBook/BookExplore';
+export { exploreBooks, parseExploreUrls } from './webBook/BookExplore';
