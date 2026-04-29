@@ -49,7 +49,9 @@ export default function BookSourceDebug() {
     if (!bookSourceUrl) return;
     const decoded = decodeURIComponent(bookSourceUrl);
     BookSourceDao.getByUrl(decoded).then(s => {
-      if (s) setSource(s);
+      if (s) {
+        setSource(s);
+      }
     });
   }, [bookSourceUrl]);
 
