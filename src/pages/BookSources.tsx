@@ -42,6 +42,9 @@ export default function BookSources() {
             : `订阅 ${rssSources  ? `(${rssSources.length})`  : ''}`}
         </h1>
         <button className="btn btn-sm btn-ghost" onClick={doExport}>导出</button>
+        {tab === 'book' && (
+          <button className="btn btn-sm btn-ghost" onClick={() => navigate('/sources/new')}>新建</button>
+        )}
         <button className="btn btn-sm btn-primary" onClick={() => navigate('/sources/import')}>导入</button>
       </div>
 
@@ -73,6 +76,8 @@ export default function BookSources() {
               <BookSourceRow key={s.bookSourceUrl} source={s}
                 onToggle={() => BookSourceDao.setEnabled(s.bookSourceUrl, !s.enabled)}
                 onDelete={() => confirm('确认删除该书源？') && BookSourceDao.delete(s.bookSourceUrl)}
+                onEdit={() => navigate(`/sources/edit/${encodeURIComponent(s.bookSourceUrl)}`)}
+                onDebug={() => navigate(`/sources/debug/${encodeURIComponent(s.bookSourceUrl)}`)}
               />
             ))}
           </div>
@@ -96,8 +101,12 @@ export default function BookSources() {
   );
 }
 
-function BookSourceRow({ source, onToggle, onDelete }: {
-  source: BookSource; onToggle: () => void; onDelete: () => void;
+function BookSourceRow({ source, onToggle, onDelete, onEdit, onDebug }: {
+  source: BookSource;
+  onToggle: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
+  onDebug: () => void;
 }) {
   return (
     <div className="source-item">
@@ -107,6 +116,8 @@ function BookSourceRow({ source, onToggle, onDelete }: {
         {source.bookSourceGroup && <span className="source-tag">{source.bookSourceGroup}</span>}
       </div>
       <button className={`toggle${source.enabled ? ' on' : ''}`} onClick={onToggle} />
+      <button className="btn btn-sm btn-ghost" onClick={onEdit}>编</button>
+      <button className="btn btn-sm btn-ghost" onClick={onDebug}>调</button>
       <button className="btn btn-sm btn-danger" onClick={onDelete}>删</button>
     </div>
   );
@@ -133,3 +144,4 @@ function RssSourceRow({ source, onRead, onToggle, onDelete }: {
     </div>
   );
 }
+

@@ -6,9 +6,10 @@ const icons = {
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
     </svg>
   ),
-  search: (
+  explore: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      <circle cx="12" cy="12" r="10"/>
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
     </svg>
   ),
   source: (
@@ -25,10 +26,10 @@ const icons = {
 };
 
 const tabs = [
-  { to: '/',         label: '书架', icon: icons.shelf,    end: true },
-  { to: '/search',   label: '搜索', icon: icons.search,   end: false },
-  { to: '/sources',  label: '书源', icon: icons.source,   end: false },
-  { to: '/settings', label: '我的', icon: icons.settings, end: false },
+  { to: '/',        label: '书架', icon: icons.shelf,   end: true },
+  { to: '/explore', label: '发现', icon: icons.explore, end: false },
+  { to: '/sources', label: '书源', icon: icons.source,  end: false },
+  { to: '/settings',label: '我的', icon: icons.settings,end: false },
 ];
 
 export default function BottomNav() {

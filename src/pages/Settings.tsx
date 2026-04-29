@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
+  const navigate = useNavigate();
   const [storageInfo, setStorageInfo] = useState<string>('');
   const [isStandalone] = useState(
     window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true
+    (window.navigator as { standalone?: boolean }).standalone === true
   );
 
   useEffect(() => {
@@ -66,6 +68,14 @@ export default function Settings() {
           <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
             开源阅读 legado 的 Web 版本，完整兼容 Android 书源格式
           </div>
+        </div>
+
+        <div className="card">
+          <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>阅读工具</div>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/replace-rules')}
+            style={{ width: '100%', textAlign: 'left', padding: '8px 12px' }}>
+            🧹 净化规则管理
+          </button>
         </div>
 
         <div className="card">
