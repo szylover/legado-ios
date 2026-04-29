@@ -39,9 +39,9 @@ export default function BookSources() {
     if (!selected.size) return;
     if (!confirm(`确认删除选中的 ${selected.size} 个${tab === 'book' ? '书源' : '订阅'}？`)) return;
     if (tab === 'book') {
-      for (const key of selected) await BookSourceDao.delete(key);
+      await BookSourceDao.bulkDelete([...selected]);
     } else {
-      for (const key of selected) await RssSourceDao.delete(key);
+      await RssSourceDao.bulkDelete([...selected]);
     }
     exitSelect();
   };
