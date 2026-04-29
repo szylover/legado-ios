@@ -111,7 +111,3 @@ function forward(target, req) {
     proxyReq.end();
   });
 }
-    if (body.length) proxyReq.write(body);
-    proxyReq.end();
-  });
-}
