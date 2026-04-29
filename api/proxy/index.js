@@ -111,10 +111,12 @@ function forward(target, req, redirects = 0) {
         }
         // Consume response body to free socket
         proxyRes.resume();
-        // 303 and GET-redirects use GET with no body
-        const redirectReq = (status === 303 || req.method === 'GET')
-          ? { ...req, method: 'GET', rawBody: null }
-          : req;
+        // 303 and non-POST redirects switch to GET with no body
+        const redirectReq = {
+          method: (status === 303 || req.method === 'GET') ? 'GET' : req.method,
+          headers: req.headers,
+          rawBody: (status === 303 || req.method === 'GET') ? null : req.rawBody,
+        };
         forward(nextUrl, redirectReq, redirects + 1).then(resolve, reject);
         return;
       }
