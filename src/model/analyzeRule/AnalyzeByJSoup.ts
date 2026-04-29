@@ -1,11 +1,58 @@
 /**
  * AnalyzeByCSS — CSS 选择器解析器
  * 对应 legado Android: AnalyzeByJSoup.kt
- * 使用 cheerio 实现
+ * 使用 cheerio 实现，支持 legado 扩展 CSS 语法：
+ *   class.foo      → .foo
+ *   tag.foo        → foo (tag selector)
+ *   id.foo         → #foo
+ *   tag.td.2       → td elements, take index 2
+ *   class.item!0   → .item elements, exclude index 0
  */
 
 import * as cheerio from 'cheerio';
 import type { AnyNode, Element } from 'domhandler';
+
+/**
+ * 解析 legado 扩展选择器语法
+ * 返回标准 CSS selector + 索引列表 + 排除索引
+ */
+function parseLegadoSelector(rule: string): {
+  selector: string;
+  indices: number[];
+  exclude: number | null;
+} {
+  let r = rule.trim();
+  let exclude: number | null = null;
+
+  // Parse !N suffix (exclusion), e.g. "tag.tr!0" → exclude index 0
+  const excludeMatch = r.match(/!(\d+)$/);
+  if (excludeMatch) {
+    exclude = parseInt(excludeMatch[1]);
+    r = r.slice(0, r.length - excludeMatch[0].length);
+  }
+
+  let selector: string;
+  let indices: number[] = [];
+
+  if (r.startsWith('class.')) {
+    // "class.item" → ".item"; "class.item.2" → ".item" then index 2
+    const parts = r.slice(6).split('.');
+    selector = '.' + parts[0];
+    indices = parts.slice(1).map(Number).filter(n => !isNaN(n));
+  } else if (r.startsWith('tag.')) {
+    // "tag.td" → "td"; "tag.td.2" → "td" then index 2
+    const parts = r.slice(4).split('.');
+    selector = parts[0];
+    indices = parts.slice(1).map(Number).filter(n => !isNaN(n));
+  } else if (r.startsWith('id.')) {
+    selector = '#' + r.slice(3);
+  } else {
+    // Standard CSS (including ":nth-child", ">", etc.)
+    selector = r;
+  }
+
+  return { selector, indices, exclude };
+}
 
 export class AnalyzeByCSS {
   private $: cheerio.CheerioAPI;
@@ -16,18 +63,39 @@ export class AnalyzeByCSS {
     this.root = this.$.root();
   }
 
-  /** 获取元素列表 */
-  getElements(rule: string): cheerio.Cheerio<Element>[] {
+  /**
+   * 获取元素列表（支持 legado 扩展语法）
+   * scope 可指定在哪个父元素内搜索
+   */
+  getElements(rule: string, scope?: cheerio.Cheerio<AnyNode>): cheerio.Cheerio<Element>[] {
     try {
-      const elements = this.root.find(rule);
-      const result: cheerio.Cheerio<Element>[] = [];
-      elements.each((_, el) => {
-        result.push(this.$(el) as cheerio.Cheerio<Element>);
-      });
-      return result;
+      const { selector, indices, exclude } = parseLegadoSelector(rule);
+      const base = scope ?? this.root;
+      const found = base.find(selector);
+
+      let items: Element[] = [];
+      found.each((_, el) => items.push(el));
+
+      // Apply sequential index selection (e.g., tag.td.2 → keep only index 2)
+      for (const idx of indices) {
+        if (idx < items.length) {
+          items = [items[idx]];
+        } else {
+          items = [];
+          break;
+        }
+      }
+
+      // Apply exclusion (e.g., !0 → remove first element)
+      if (exclude !== null) {
+        items = items.filter((_, i) => i !== exclude);
+      }
+
+      return items.map(el => this.$(el) as cheerio.Cheerio<Element>);
     } catch {
       return [];
     }
+  }
   }
 
   /** 按选择器获取单个字符串 */
