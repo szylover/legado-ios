@@ -9,7 +9,7 @@ export default function Search() {
   const [kw, setKw] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [busy, setBusy] = useState(false);
-  const [searchMeta, setSearchMeta] = useState<{ tried: number; errors: number; done: boolean } | null>(null);
+  const [searchMeta, setSearchMeta] = useState<{ tried: number; total: number; errors: number; done: boolean } | null>(null);
   const aborted = useRef(false);
 
   const cancelSearch = () => {
@@ -51,9 +51,9 @@ export default function Search() {
           return [...prev, ...add];
         });
       }
-      setSearchMeta({ tried, errors, done: i + 5 >= total });
+      setSearchMeta({ tried, total, errors, done: i + 5 >= total });
     }
-    setSearchMeta({ tried, errors, done: true });
+    setSearchMeta({ tried, total, errors, done: true });
     setBusy(false);
   };
 
@@ -90,13 +90,14 @@ export default function Search() {
       {results.length === 0 && !busy && !searchMeta && (
         <div className="empty"><p>输入书名或作者搜索</p></div>
       )}
-      {results.length === 0 && !busy && searchMeta?.done && (
-        <div className="empty">
-          <p>无结果</p>
-          <p style={{ fontSize: 12, color: 'var(--text2)' }}>
-            搜索了 {searchMeta.tried} 个书源
-            {searchMeta.errors > 0 && `，${searchMeta.errors} 个请求失败（网络或书源规则问题），请打开浏览器控制台查看详情`}
-          </p>
+      {searchMeta && (
+        <div style={{ padding: '6px 16px', fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>
+          {busy
+            ? `已搜 ${searchMeta.tried} / ${searchMeta.total} 个书源，找到 ${results.length} 个结果${searchMeta.errors > 0 ? `，${searchMeta.errors} 个失败` : ''}`
+            : results.length > 0
+              ? `共搜索 ${searchMeta.total} 个书源，找到 ${results.length} 个结果${searchMeta.errors > 0 ? `，${searchMeta.errors} 个失败` : ''}`
+              : `已搜索 ${searchMeta.total} 个书源，无结果${searchMeta.errors > 0 ? `，${searchMeta.errors} 个失败` : ''}`
+          }
         </div>
       )}
 
@@ -126,10 +127,11 @@ export default function Search() {
             <button className="btn btn-sm btn-primary" onClick={() => addBook(r)}>加入书架</button>
           </div>
         ))}
-        {busy && (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text2)' }}>
-            搜索中… {searchMeta ? `(${searchMeta.tried} 个书源已完成，${searchMeta.errors} 个失败)` : ''}
-          </div>
+        {results.length === 0 && busy && !searchMeta && (
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text2)' }}>搜索中…</div>
+        )}
+        {results.length === 0 && !busy && searchMeta?.done && results.length === 0 && (
+          <div className="empty"><p>无结果</p></div>
         )}
       </div>
     </div>
