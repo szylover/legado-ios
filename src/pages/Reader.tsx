@@ -62,8 +62,8 @@ function getSystemTheme() {
     : { bg: '#ffffff', text: '#1a1a1a' };
 }
 
-/** 0 = 滚动, 1 = 平移滑动 */
-type PageMode = 0 | 1;
+/** 0 = 滚动, 1 = 平移滑动, 2 = 仿真翻页 */
+type PageMode = 0 | 1 | 2;
 
 export default function Reader() {
   const { bookUrl } = useParams<{ bookUrl: string }>();
@@ -559,6 +559,47 @@ export default function Reader() {
         </div>
       )}
 
+      {/* ── 仿真翻页模式 ── */}
+      {pageMode === 2 && (
+        <div
+          className="reader-body"
+          style={{
+            fontSize, lineHeight, color: theme.text, background: theme.bg,
+            overflow: 'hidden', position: 'relative', fontFamily: fontFamily || undefined,
+            perspective: '1200px',
+          }}
+          onClick={() => { if (!showChapterList && !showSettings && !showBookmarks) setShowCtrl(v => !v); }}
+          onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={e => {
+            if (touchStartX.current === null) return;
+            const dx = e.changedTouches[0].clientX - touchStartX.current;
+            touchStartX.current = null;
+            if (Math.abs(dx) < 50) return;
+            if (dx < 0 && idx < chapters.length - 1) slideTo(idx + 1, 'next');
+            if (dx > 0 && idx > 0) slideTo(idx - 1, 'prev');
+          }}
+        >
+          <div style={{
+            whiteSpace: 'pre-wrap', wordBreak: 'break-all', height: '100%', overflowY: 'auto',
+            padding: `0 ${padding}px`, letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+            transformOrigin: slideAnim === 'exit-left' || slideAnim === 'enter-left'
+              ? 'right center' : 'left center',
+            transform: slideAnim === 'exit-left'  ? 'rotateY(-90deg)'  :
+                       slideAnim === 'exit-right' ? 'rotateY(90deg)'   :
+                       slideAnim === 'enter-right'? 'rotateY(90deg)'   :
+                       slideAnim === 'enter-left' ? 'rotateY(-90deg)'  : 'rotateY(0deg)',
+            transition: slideAnim === 'none' ? 'none' : 'transform 0.28s ease',
+            opacity: slideAnim.startsWith('exit') ? 0 : 1,
+            boxShadow: slideAnim === 'none' ? 'none' : '4px 0 20px rgba(0,0,0,0.3)',
+          }}>
+            {loading
+              ? <div style={{ color: 'var(--text2)', textAlign: 'center', marginTop: 40 }}>加载中…</div>
+              : content
+            }
+          </div>
+        </div>
+      )}
+
       {/* Chapter list drawer */}
       {showChapterList && (
         <div
@@ -725,6 +766,7 @@ export default function Reader() {
                 {([
                   { mode: 0 as PageMode, label: '滚动' },
                   { mode: 1 as PageMode, label: '滑动' },
+                  { mode: 2 as PageMode, label: '翻页' },
                 ] as const).map(({ mode, label }) => (
                   <button
                     key={mode}
@@ -850,12 +892,12 @@ export default function Reader() {
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
             <button className="btn btn-ghost btn-sm" disabled={idx <= 0}
-              onClick={() => pageMode === 1 ? slideTo(idx - 1, 'prev') : setIdx(i => i - 1)}>上一章</button>
+              onClick={() => pageMode >= 1 ? slideTo(idx - 1, 'prev') : setIdx(i => i - 1)}>上一章</button>
             <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {chapters[idx]?.title}
             </div>
             <button className="btn btn-ghost btn-sm" disabled={idx >= chapters.length - 1}
-              onClick={() => pageMode === 1 ? slideTo(idx + 1, 'next') : setIdx(i => i + 1)}>下一章</button>
+              onClick={() => pageMode >= 1 ? slideTo(idx + 1, 'next') : setIdx(i => i + 1)}>下一章</button>
           </div>
           {chapters.length > 0 && (
             <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'center' }}>
