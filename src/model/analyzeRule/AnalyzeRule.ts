@@ -75,12 +75,14 @@ export class AnalyzeRule {
     const parts = splitByAt(rule);
     let html = this.toHtml(this.content);
 
-    // Navigate through intermediate levels, narrowing to first matched element's HTML
+    // Navigate through intermediate levels, collecting ALL matched elements
     for (let i = 0; i < parts.length - 1; i++) {
       const analyzer = new AnalyzeByCSS(html);
       const matched = analyzer.getElements(parts[i]);
       if (!matched.length) return [];
-      html = analyzer['$'].html(matched[0]) ?? '';
+      // Concatenate outer HTML of ALL matched elements (not just the first)
+      // so the next step can search across all of them
+      html = matched.map(el => analyzer['$'].html(el) ?? '').join('');
       if (!html) return [];
     }
 
