@@ -100,6 +100,12 @@ export default function Reader() {
   const [slideAnim, setSlideAnim] = useState<'none' | 'exit-left' | 'exit-right' | 'enter-right' | 'enter-left'>('none');
   const touchStartX = useRef<number | null>(null);
 
+  // In-book search state
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchKw, setSearchKw] = useState('');
+  const [searchResults, setSearchResults] = useState<{ chapterIdx: number; title: string; excerpt?: string }[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // download state
   const [downloading, setDownloading] = useState(false);
   const [dlProgress, setDlProgress] = useState(0);
@@ -268,6 +274,7 @@ export default function Reader() {
     setIdx(i);
     setShowChapterList(false);
     setShowBookmarks(false);
+    setShowSearch(false);
     setShowCtrl(false);
   }, []);
 
@@ -344,6 +351,36 @@ export default function Reader() {
   }, []);
   const downloadedPct = chapters.length ? Math.round((cachedCount / chapters.length) * 100) : 0;
 
+  const doBookSearch = useCallback((kw: string) => {
+    if (!kw.trim()) { setSearchResults([]); return; }
+    const q = kw.toLowerCase();
+    const hits: { chapterIdx: number; title: string; excerpt?: string }[] = [];
+    for (let i = 0; i < chapters.length; i++) {
+      const ch = chapters[i];
+      const titleMatch = ch.title.toLowerCase().includes(q);
+      const contentMatch = ch.cachedContent?.toLowerCase().includes(q);
+      if (titleMatch || contentMatch) {
+        let excerpt: string | undefined;
+        if (contentMatch && ch.cachedContent) {
+          const pos = ch.cachedContent.toLowerCase().indexOf(q);
+          const start = Math.max(0, pos - 20);
+          excerpt = ch.cachedContent.slice(start, pos + kw.length + 40).replace(/\n+/g, ' ');
+        }
+        hits.push({ chapterIdx: i, title: ch.title, excerpt });
+        if (hits.length >= 50) break; // cap results
+      }
+    }
+    setSearchResults(hits);
+  }, [chapters]);
+
+  const openInBookSearch = useCallback(() => {
+    setShowSearch(true);
+    setShowChapterList(false);
+    setShowBookmarks(false);
+    setShowSettings(false);
+    setTimeout(() => searchInputRef.current?.focus(), 100);
+  }, []);
+
   return (
     <div className="reader-wrap" style={{ background: theme.bg, color: theme.text, filter: brightness < 1 ? `brightness(${brightness})` : undefined }}>
       {showCtrl && (
@@ -351,6 +388,11 @@ export default function Reader() {
           <button onClick={() => navigate(-1)} style={{ color: 'var(--accent)', flexShrink: 0 }}>← 返回</button>
           <h2 style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{book?.name}</h2>
           {offline && <span style={{ fontSize: 11, color: '#f90', flexShrink: 0 }}>离线</span>}
+          <button
+            onClick={e => { e.stopPropagation(); openInBookSearch(); }}
+            style={{ color: 'var(--accent)', fontSize: 14, flexShrink: 0 }}
+            title="书内搜索"
+          >🔍</button>
           <button
             onClick={e => { e.stopPropagation(); setShowChapterList(v => !v); setShowSettings(false); setShowBookmarks(false); }}
             style={{ color: 'var(--accent)', fontSize: 13, flexShrink: 0 }}
@@ -368,6 +410,69 @@ export default function Reader() {
             onClick={e => { e.stopPropagation(); setShowSettings(v => !v); setShowChapterList(false); setShowBookmarks(false); }}
             style={{ color: 'var(--accent)', fontSize: 13, flexShrink: 0 }}
           >Aa</button>
+        </div>
+      )}
+
+      {/* In-book search overlay */}
+      {showSearch && (
+        <div
+          style={{ position: 'absolute', inset: 0, zIndex: 300, background: 'var(--bg2)', display: 'flex', flexDirection: 'column' }}
+        >
+          {/* Search bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <input
+              ref={searchInputRef}
+              value={searchKw}
+              onChange={e => { setSearchKw(e.target.value); doBookSearch(e.target.value); }}
+              placeholder="搜索章节标题或已缓存正文…"
+              style={{ flex: 1, fontSize: 14, padding: '8px 12px', borderRadius: 8,
+                background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            />
+            <button
+              onClick={() => { setShowSearch(false); setSearchKw(''); setSearchResults([]); }}
+              style={{ color: 'var(--accent)', fontSize: 13, flexShrink: 0 }}
+            >关闭</button>
+          </div>
+          {/* Results */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {searchKw && searchResults.length === 0 && (
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+                无匹配结果<br />
+                <span style={{ fontSize: 11 }}>只能搜索已缓存章节的正文</span>
+              </div>
+            )}
+            {searchResults.map(r => (
+              <div
+                key={r.chapterIdx}
+                onClick={() => {
+                  jumpToChapter(r.chapterIdx);
+                  setShowSearch(false);
+                  setSearchKw('');
+                  setSearchResults([]);
+                }}
+                style={{
+                  padding: '12px 16px', borderBottom: '1px solid var(--border)',
+                  cursor: 'pointer', background: r.chapterIdx === idx ? 'rgba(79,195,247,0.08)' : 'transparent',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 500, color: r.chapterIdx === idx ? 'var(--accent)' : 'var(--text)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.title}
+                </div>
+                {r.excerpt && (
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4,
+                    overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    …{r.excerpt}…
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {!searchKw && (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+              输入关键词搜索 {chapters.length} 章
+            </div>
+          )}
         </div>
       )}
 
