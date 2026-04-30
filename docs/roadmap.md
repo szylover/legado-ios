@@ -79,6 +79,7 @@
 | T0052 | 书籍详情页 | T0032, T0050 | — | ✅ |
 | [T0053](https://github.com/szylover/legado-web/issues/46) | 书架网格/列表切换 + 排序 | T0050 | — | ✅ |
 | [T0054](https://github.com/szylover/legado-web/issues/47) | 书架一键更新所有书 | T0050 | — | ✅ |
+| [T0055](https://github.com/szylover/legado-web/issues/54) | 书架分组 Tab（自定义分组、书籍归组）| T0050 | — | ✅ |
 
 ---
 
@@ -92,6 +93,9 @@
 | T0063 | 目录侧边栏 | T0060 | — | ✅ |
 | T0064 | 书签 | T0060 | — | ✅ |
 | [T0065](https://github.com/szylover/legado-web/issues/49) | 阅读器亮度控制 + 字体选择 | T0061 | — | ✅ |
+| [T0066](https://github.com/szylover/legado-web/issues/50) | 屏幕常亮（Wake Lock） | T0060 | — | ✅ |
+| [T0067](https://github.com/szylover/legado-web/issues/51) | 阅读器页边距 + 字间距 | T0061 | — | ✅ |
+| [T0068](https://github.com/szylover/legado-web/issues/52) | 阅读进度百分比显示 | T0060 | — | ✅ |
 
 ---
 
@@ -101,6 +105,7 @@
 |----|------|------|------|------|
 | T0070 | 搜索页面（多书源聚合搜索） | T0031, T0050 | — | ✅ |
 | [T0072](https://github.com/szylover/legado-web/issues/48) | 搜索历史 | T0070 | — | ✅ |
+| [T0073](https://github.com/szylover/legado-web/issues/55) | 搜索结果聚合去重（多来源合并） | T0070 | — | ✅ |
 | T0071 | 发现页面（书源 Explore 规则） | T0031 | — | ✅ |
 
 ---
