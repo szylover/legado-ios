@@ -1,19 +1,77 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { BookDao } from '@/data/dao/BookDao';
+import { BookChapterDao } from '@/data/dao/BookChapterDao';
 import type { Book } from '@/data/entities/Book';
 
 export default function Bookshelf() {
   const navigate = useNavigate();
   const books = useLiveQuery(() => BookDao.getAll(), []);
+  const [managing, setManaging] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   if (!books) return null;
+
+  const toggleSelect = (url: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(url) ? next.delete(url) : next.add(url);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === books.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(books.map(b => b.bookUrl)));
+    }
+  };
+
+  const deleteSelected = async () => {
+    if (!selected.size) return;
+    if (!confirm(`确定删除选中的 ${selected.size} 本书？`)) return;
+    for (const url of selected) {
+      await BookDao.delete(url);
+      await BookChapterDao.deleteByBook(url);
+    }
+    setSelected(new Set());
+    setManaging(false);
+  };
+
+  const exitManage = () => {
+    setManaging(false);
+    setSelected(new Set());
+  };
 
   return (
     <div>
       <div className="page-hdr">
         <h1>书架</h1>
-        <button onClick={() => navigate('/search')} style={{ color: 'var(--accent)', fontSize: 14 }}>搜索</button>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {managing ? (
+            <>
+              <button onClick={toggleAll} style={{ color: 'var(--text2)', fontSize: 13 }}>
+                {selected.size === books.length ? '取消全选' : '全选'}
+              </button>
+              {selected.size > 0 && (
+                <button onClick={deleteSelected}
+                  style={{ color: 'var(--danger)', fontSize: 13 }}>
+                  删除({selected.size})
+                </button>
+              )}
+              <button onClick={exitManage} style={{ color: 'var(--accent)', fontSize: 14 }}>完成</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => navigate('/search')} style={{ color: 'var(--accent)', fontSize: 14 }}>搜索</button>
+              {books.length > 0 && (
+                <button onClick={() => setManaging(true)} style={{ color: 'var(--text2)', fontSize: 14 }}>管理</button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {books.length === 0 ? (
@@ -28,8 +86,13 @@ export default function Bookshelf() {
       ) : (
         <div className="book-grid">
           {books.map(book => (
-            <BookCard key={book.bookUrl} book={book}
-              onClick={() => navigate(`/book/${encodeURIComponent(book.bookUrl)}`)} />
+            <BookCard
+              key={book.bookUrl}
+              book={book}
+              managing={managing}
+              selected={selected.has(book.bookUrl)}
+              onClick={() => managing ? toggleSelect(book.bookUrl) : navigate(`/book/${encodeURIComponent(book.bookUrl)}`)}
+            />
           ))}
         </div>
       )}
@@ -37,13 +100,31 @@ export default function Bookshelf() {
   );
 }
 
-function BookCard({ book, onClick }: { book: Book; onClick: () => void }) {
+function BookCard({ book, onClick, managing, selected }: {
+  book: Book;
+  onClick: () => void;
+  managing?: boolean;
+  selected?: boolean;
+}) {
   const total = book.totalChapterNum || 0;
   const cur = book.durChapterIndex || 0;
   const pct = total > 0 ? Math.round(((cur + 1) / total) * 100) : 0;
 
   return (
-    <div className="book-card" onClick={onClick}>
+    <div className="book-card" onClick={onClick}
+      style={{ position: 'relative', opacity: managing && !selected ? 0.6 : 1 }}>
+      {managing && (
+        <div style={{
+          position: 'absolute', top: 4, right: 4, zIndex: 10,
+          width: 20, height: 20, borderRadius: '50%',
+          background: selected ? 'var(--accent)' : 'rgba(0,0,0,0.35)',
+          border: `2px solid ${selected ? 'var(--accent)' : 'rgba(255,255,255,0.7)'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, color: '#fff', fontWeight: 700,
+        }}>
+          {selected ? '✓' : ''}
+        </div>
+      )}
       <div className="book-cover">
         {book.coverUrl
           ? <img src={book.coverUrl} alt={book.name} loading="lazy" />
