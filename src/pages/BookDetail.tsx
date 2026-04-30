@@ -81,6 +81,13 @@ export default function BookDetail() {
 
   const totalKnown = book.totalChapterNum || chapters.length;
   const progress = totalKnown > 0 ? Math.round(((book.durChapterIndex + 1) / totalKnown) * 100) : 0;
+  const readSeconds = Number(localStorage.getItem(`read_time_${book.bookUrl}`) ?? 0);
+  const readMinutes = Math.floor(readSeconds / 60);
+  const readHours = Math.floor(readMinutes / 60);
+  const readTimeStr = readHours > 0
+    ? `${readHours}小时${readMinutes % 60}分`
+    : readMinutes > 0 ? `${readMinutes}分钟` : readSeconds > 0 ? `${readSeconds}秒` : null;
+  const cachedWords = chapters.reduce((sum, ch) => sum + (ch.cachedContent?.length ?? 0), 0);
 
   return (
     <div>
@@ -129,6 +136,13 @@ export default function BookDetail() {
             {chapters[book.durChapterIndex] && (
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>
                 当前：{chapters[book.durChapterIndex].title}
+              </div>
+            )}
+            {/* Reading stats */}
+            {(readTimeStr || cachedWords > 0) && (
+              <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12, color: 'var(--text2)' }}>
+                {readTimeStr && <span>⏱ 累计阅读 {readTimeStr}</span>}
+                {cachedWords > 0 && <span>📝 已缓存 {(cachedWords / 10000).toFixed(1)} 万字</span>}
               </div>
             )}
           </div>

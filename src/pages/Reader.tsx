@@ -50,10 +50,17 @@ function applyReplaceRules(text: string, rules: ReplaceRule[], origin: string): 
 }
 
 const THEMES = [
+  { key: 'system', bg: '', text: '', label: '系统' },
   { key: 'dark',  bg: '#1a1a2e', text: '#e0e0e0', label: '深色' },
   { key: 'sepia', bg: '#f5efe0', text: '#3d2b1f', label: '护眼' },
   { key: 'light', bg: '#ffffff', text: '#1a1a1a', label: '白色' },
 ];
+
+function getSystemTheme() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? { bg: '#1a1a2e', text: '#e0e0e0' }
+    : { bg: '#ffffff', text: '#1a1a1a' };
+}
 
 /** 0 = 滚动, 1 = 平移滑动 */
 type PageMode = 0 | 1;
@@ -115,7 +122,10 @@ export default function Reader() {
   const chapterListRef = useRef<HTMLDivElement>(null);
 
   const decoded = decodeURIComponent(bookUrl ?? '');
-  const theme = THEMES.find(t => t.key === themeKey) ?? THEMES[0];
+  const themeBase = THEMES.find(t => t.key === themeKey) ?? THEMES[0];
+  const theme = themeKey === 'system'
+    ? { ...themeBase, ...getSystemTheme() }
+    : themeBase;
 
   useEffect(() => {
     const online = () => setOffline(false);
@@ -124,6 +134,15 @@ export default function Reader() {
     window.addEventListener('offline', off);
     return () => { window.removeEventListener('online', online); window.removeEventListener('offline', off); };
   }, []);
+
+  // Force re-render when system color scheme changes (for 'system' theme)
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => { if (themeKey === 'system') forceUpdate(v => v + 1); };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [themeKey]);
 
   useEffect(() => {
     if (!decoded) return;
@@ -215,6 +234,20 @@ export default function Reader() {
     }
     return () => { wakeLock?.release(); };
   }, []);
+
+  // Reading time tracking — accumulate seconds per book in localStorage
+  const readStartRef = useRef<number>(Date.now());
+  useEffect(() => {
+    readStartRef.current = Date.now();
+    return () => {
+      if (!book) return;
+      const elapsed = Math.floor((Date.now() - readStartRef.current) / 1000);
+      if (elapsed < 2) return;
+      const key = `read_time_${book.bookUrl}`;
+      const prev = Number(localStorage.getItem(key) ?? 0);
+      localStorage.setItem(key, String(prev + elapsed));
+    };
+  }, [book?.bookUrl, idx]);
 
   // Stop TTS when leaving reader
   useEffect(() => () => { tts.stop(); }, []);

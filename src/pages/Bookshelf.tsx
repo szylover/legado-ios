@@ -127,6 +127,71 @@ export default function Bookshelf() {
     await BookGroupDao.upsert({ groupId: maxId + 1, groupName: name.trim(), order: maxId + 1, show: true });
   };
 
+  const importTxt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const text = await file.text();
+    const fileName = file.name.replace(/\.txt$/i, '');
+
+    // Chapter detection patterns (legado-compatible)
+    const CHAPTER_RE = /^(第[零一二三四五六七八九十百千万\d]+[章节卷集回部][\s\S]{0,30}|Chapter\s+\d+[\s\S]{0,30}|CHAPTER\s+\d+[\s\S]{0,30}|序章|楔子|尾声|后记|番外[\s\S]{0,20})/m;
+    const lines = text.split('\n');
+    const chapterStarts: { idx: number; title: string }[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      if (CHAPTER_RE.test(line) && line.length < 60) {
+        chapterStarts.push({ idx: i, title: line });
+      }
+    }
+
+    // If no chapters detected, treat whole file as one chapter
+    if (chapterStarts.length < 2) {
+      chapterStarts.length = 0;
+      chapterStarts.push({ idx: 0, title: fileName });
+    }
+
+    // Build chapters
+    const chaptersData: { title: string; content: string }[] = [];
+    for (let i = 0; i < chapterStarts.length; i++) {
+      const start = chapterStarts[i].idx + 1;
+      const end = chapterStarts[i + 1]?.idx ?? lines.length;
+      chaptersData.push({
+        title: chapterStarts[i].title,
+        content: lines.slice(start, end).join('\n').trim(),
+      });
+    }
+
+    const bookUrl = `local://${fileName}_${Date.now()}`;
+    const now = Date.now();
+
+    await BookDao.upsert({
+      bookUrl, tocUrl: bookUrl, origin: 'local', originName: '本地书籍',
+      name: fileName, author: '', type: 0, group: -2, // -2 = 本地分组
+      latestChapterTitle: chaptersData[chaptersData.length - 1]?.title,
+      latestChapterTime: now, lastCheckTime: now, lastCheckCount: 0,
+      totalChapterNum: chaptersData.length, scrollIndex: 0,
+      durChapterIndex: 0, durChapterPos: 0, durChapterTime: now,
+      canUpdate: false, order: now,
+    });
+
+    await BookChapterDao.insertMany(chaptersData.map((ch, i) => ({
+      bookUrl,
+      url: `${bookUrl}#${i}`,
+      index: i,
+      title: ch.title,
+      cachedContent: ch.content,
+      isVolume: false,
+      isVip: false,
+      isPay: false,
+    })));
+
+    alert(`✅ 导入成功：《${fileName}》共 ${chaptersData.length} 章`);
+  };
+
   const cycleSortOrder = () => {
     setSortOrder(prev => {
       const i = SORT_OPTIONS.indexOf(prev);
@@ -219,6 +284,16 @@ export default function Bookshelf() {
           ) : (
             <>
               <button onClick={() => navigate('/search')} style={{ color: 'var(--accent)', fontSize: 14 }}>搜索</button>
+              <label
+                title="导入本地 TXT 书籍"
+                style={{ color: 'var(--accent)', fontSize: 14, cursor: 'pointer' }}
+              >
+                📂
+                <input
+                  type="file" accept=".txt" style={{ display: 'none' }}
+                  onChange={importTxt}
+                />
+              </label>
               {books.length > 0 && (
                 <>
                   <button
@@ -293,7 +368,13 @@ export default function Bookshelf() {
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
           </svg>
           <p>书架空空如也<br />去搜索添加书籍，或先导入书源</p>
-          <button className="btn btn-primary" onClick={() => navigate('/sources')}>管理书源</button>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/sources')}>管理书源</button>
+            <label className="btn btn-ghost" style={{ cursor: 'pointer' }}>
+              📂 导入 TXT
+              <input type="file" accept=".txt" style={{ display: 'none' }} onChange={importTxt} />
+            </label>
+          </div>
         </div>
       ) : (
         <>

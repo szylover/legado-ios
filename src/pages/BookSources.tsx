@@ -14,12 +14,20 @@ export default function BookSources() {
   const [tab, setTab] = useState<Tab>('book');
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [activeGroup, setActiveGroup] = useState<string>('全部');
   const bookSources = useLiveQuery(() => BookSourceDao.getAll(), []);
   const rssSources  = useLiveQuery(() => RssSourceDao.getAll(), []);
 
-  const filteredBook = (bookSources ?? []).filter(
-    s => s.bookSourceName.includes(q) || s.bookSourceUrl.includes(q)
-  );
+  // Compute unique groups for book sources
+  const bookGroups = ['全部', ...Array.from(new Set(
+    (bookSources ?? []).map(s => s.bookSourceGroup?.trim() || '未分组').filter(Boolean)
+  )).sort()];
+
+  const filteredBook = (bookSources ?? []).filter(s => {
+    const matchQ = s.bookSourceName.includes(q) || s.bookSourceUrl.includes(q);
+    const matchGroup = activeGroup === '全部' || (s.bookSourceGroup?.trim() || '未分组') === activeGroup;
+    return matchQ && matchGroup;
+  });
   const filteredRss = (rssSources ?? []).filter(
     s => s.sourceName.includes(q) || s.sourceUrl.includes(q)
   );
@@ -110,6 +118,33 @@ export default function BookSources() {
         <input className="search-input" placeholder={tab === 'book' ? '搜索书源…' : '搜索订阅…'}
           value={q} onChange={e => setQ(e.target.value)} />
       </div>
+
+      {/* Book source group filter */}
+      {tab === 'book' && bookGroups.length > 1 && (
+        <div style={{
+          display: 'flex', overflowX: 'auto', gap: 0,
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--bg)',
+          scrollbarWidth: 'none',
+          padding: '0 4px',
+        }}>
+          {bookGroups.map(g => (
+            <button key={g} onClick={() => setActiveGroup(g)} style={{
+              flexShrink: 0, padding: '7px 14px', fontSize: 12,
+              color: activeGroup === g ? 'var(--accent)' : 'var(--text2)',
+              background: 'none', border: 'none',
+              borderBottom: activeGroup === g ? '2px solid var(--accent)' : '2px solid transparent',
+            }}>
+              {g}
+              {g !== '全部' && (
+                <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--text2)' }}>
+                  ({(bookSources ?? []).filter(s => (s.bookSourceGroup?.trim() || '未分组') === g).length})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === 'book' ? (
         filteredBook.length === 0 ? (
