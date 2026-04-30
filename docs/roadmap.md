@@ -96,6 +96,7 @@
 | [T0066](https://github.com/szylover/legado-web/issues/50) | 屏幕常亮（Wake Lock） | T0060 | — | ✅ |
 | [T0067](https://github.com/szylover/legado-web/issues/51) | 阅读器页边距 + 字间距 | T0061 | — | ✅ |
 | [T0068](https://github.com/szylover/legado-web/issues/52) | 阅读进度百分比显示 | T0060 | — | ✅ |
+| [T0069](https://github.com/szylover/legado-web/issues/56) | 阅读器书内搜索（章节标题+缓存正文）| T0060 | — | ✅ |
 
 ---
 
