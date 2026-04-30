@@ -19,6 +19,8 @@ const LS_THEME = 'reader_theme';
 const LS_PAGE_MODE = 'reader_page_mode';
 const LS_BRIGHTNESS = 'reader_brightness';
 const LS_FONT_FAMILY = 'reader_font';
+const LS_PADDING = 'reader_padding';
+const LS_LETTER_SPACING = 'reader_letter_spacing';
 
 const FONT_OPTIONS = [
   { label: '默认', value: '' },
@@ -91,6 +93,8 @@ export default function Reader() {
     return v >= 0.3 && v <= 1 ? v : 1;
   });
   const [fontFamily, setFontFamily] = useState(() => localStorage.getItem(LS_FONT_FAMILY) ?? '');
+  const [padding, setPadding] = useState(() => Number(localStorage.getItem(LS_PADDING)) || 20);
+  const [letterSpacing, setLetterSpacing] = useState(() => Number(localStorage.getItem(LS_LETTER_SPACING)) || 0);
 
   // slide animation state
   const [slideAnim, setSlideAnim] = useState<'none' | 'exit-left' | 'exit-right' | 'enter-right' | 'enter-left'>('none');
@@ -193,6 +197,18 @@ export default function Reader() {
   useEffect(() => { localStorage.setItem(LS_PAGE_MODE, String(pageMode)); }, [pageMode]);
   useEffect(() => { localStorage.setItem(LS_BRIGHTNESS, String(brightness)); }, [brightness]);
   useEffect(() => { localStorage.setItem(LS_FONT_FAMILY, fontFamily); }, [fontFamily]);
+  useEffect(() => { localStorage.setItem(LS_PADDING, String(padding)); }, [padding]);
+  useEffect(() => { localStorage.setItem(LS_LETTER_SPACING, String(letterSpacing)); }, [letterSpacing]);
+
+  // Screen Wake Lock — keep screen on while reading
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+    if ('wakeLock' in navigator) {
+      (navigator as Navigator & { wakeLock: { request(type: string): Promise<WakeLockSentinel> } })
+        .wakeLock.request('screen').then(wl => { wakeLock = wl; }).catch(() => {});
+    }
+    return () => { wakeLock?.release(); };
+  }, []);
 
   // Stop TTS when leaving reader
   useEffect(() => () => { tts.stop(); }, []);
@@ -365,7 +381,7 @@ export default function Reader() {
         >
           {loading
             ? <div style={{ color: 'var(--text2)', textAlign: 'center', marginTop: 40 }}>加载中…</div>
-            : <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{content}</div>
+            : <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: `0 ${padding}px`, letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined }}>{content}</div>
           }
         </div>
       ) : (
@@ -389,6 +405,7 @@ export default function Reader() {
         >
           <div style={{
             whiteSpace: 'pre-wrap', wordBreak: 'break-all', height: '100%', overflowY: 'auto',
+            padding: `0 ${padding}px`, letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
             transform: slideAnim === 'exit-left'  ? 'translateX(-100%)' :
                        slideAnim === 'exit-right' ? 'translateX(100%)'  :
                        slideAnim === 'enter-right'? 'translateX(100%)'  :
@@ -600,7 +617,7 @@ export default function Reader() {
             </div>
 
             {/* Font family */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <span style={{ fontSize: 12, color: 'var(--text2)', width: 60 }}>字体</span>
               <div style={{ display: 'flex', gap: 8, flex: 1, flexWrap: 'wrap' }}>
                 {FONT_OPTIONS.map(opt => (
@@ -617,6 +634,35 @@ export default function Reader() {
                   >{opt.label}</button>
                 ))}
               </div>
+            </div>
+
+            {/* Padding */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)', width: 60 }}>页边距</span>
+              <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+                {[8, 16, 24, 32, 48].map(v => (
+                  <button key={v} onClick={() => setPadding(v)} style={{
+                    flex: 1, padding: '6px 4px', borderRadius: 8, fontSize: 12,
+                    background: padding === v ? 'var(--accent)' : 'var(--surface)',
+                    color: padding === v ? '#000' : 'var(--text)',
+                    border: '2px solid transparent',
+                  }}>{v}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Letter spacing */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)', width: 60 }}>字间距</span>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>0</span>
+              <input
+                type="range"
+                min={0} max={3} step={0.5}
+                value={letterSpacing}
+                onChange={e => setLetterSpacing(Number(e.target.value))}
+                style={{ flex: 1, accentColor: 'var(--accent)' }}
+              />
+              <span style={{ fontSize: 12, color: 'var(--text2)', minWidth: 28 }}>{letterSpacing}px</span>
             </div>
           </div>
         </div>
@@ -673,6 +719,11 @@ export default function Reader() {
             <button className="btn btn-ghost btn-sm" disabled={idx >= chapters.length - 1}
               onClick={() => pageMode === 1 ? slideTo(idx + 1, 'next') : setIdx(i => i + 1)}>下一章</button>
           </div>
+          {chapters.length > 0 && (
+            <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'center' }}>
+              {idx + 1} / {chapters.length} 章 · {Math.round(((idx + 1) / chapters.length) * 100)}%
+            </div>
+          )}
           {!downloading && (
             <button
               className="btn btn-ghost btn-sm"

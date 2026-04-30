@@ -1,0 +1,39 @@
+[
+  {
+    "bookSourceUrl": "https://www.biquge365.net/",
+    "bookSourceName": "笔趣阁365",
+    "bookSourceGroup": "笔趣阁",
+    "bookSourceType": 0,
+    "customOrder": 0,
+    "enabled": true,
+    "enabledExplore": false,
+    "enabledCookieJar": false,
+    "lastUpdateTime": 0,
+    "respondTime": 180000,
+    "weight": 0,
+    "searchUrl": "https://www.biquge365.net/s.php,{\"body\":\"type=articlename&s={{key}}&submit=\",\"method\":\"POST\"}",
+    "ruleSearch": {
+      "bookList": ".search@li!0&&.gengxin@li&&.wanben@li",
+      "name": ".name@a@text||.p2@a@text",
+      "author": ".zuo@a@text||.zuo@text",
+      "bookUrl": ".name@a@href",
+      "lastChapter": ".jie@a@text"
+    },
+    "ruleBookInfo": {
+      "name": "h1.booktitle@text||.bookTitle@text",
+      "author": ".booknav2@a@text",
+      "intro": "#intro@p@text",
+      "coverUrl": ".bookImg@img@src",
+      "tocUrl": "body@a[href*=mulu]@href"
+    },
+    "ruleToc": {
+      "chapterList": "#chapterList@li||.chapter@li",
+      "chapterName": "a@text",
+      "chapterUrl": "a@href",
+      "nextTocUrl": ".next@a@href"
+    },
+    "ruleContent": {
+      "content": "#chaptercontent@text||.readContent@text"
+    }
+  }
+]

@@ -4,8 +4,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { BookDao } from '@/data/dao/BookDao';
 import { BookChapterDao } from '@/data/dao/BookChapterDao';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
+import { BookGroupDao } from '@/data/dao/BookGroupDao';
 import { getChapterList, getBookInfo } from '@/core/network/WebBook';
 import type { Book } from '@/data/entities/Book';
+import type { BookGroup } from '@/data/entities/BookGroup';
+import { DEFAULT_GROUPS } from '@/data/entities/BookGroup';
+import { db } from '@/data/db';
 
 type SortOrder = '最近阅读' | '书名' | '入库时间';
 type ViewMode = 'grid' | 'list';
@@ -13,6 +17,14 @@ type ViewMode = 'grid' | 'list';
 const SORT_OPTIONS: SortOrder[] = ['最近阅读', '书名', '入库时间'];
 const LS_VIEW = 'bookshelf_view';
 const LS_SORT = 'bookshelf_sort';
+const LS_GROUP = 'bookshelf_group';
+
+// Filter books by group: -1=all, -4=ungrouped, else match exact groupId
+function filterByGroup(books: Book[], groupId: number): Book[] {
+  if (groupId === -1) return books;
+  if (groupId === -4) return books.filter(b => !b.group);
+  return books.filter(b => b.group === groupId);
+}
 
 function sortBooks(books: Book[], order: SortOrder): Book[] {
   const arr = [...books];
@@ -29,14 +41,30 @@ function sortBooks(books: Book[], order: SortOrder): Book[] {
 export default function Bookshelf() {
   const navigate = useNavigate();
   const books = useLiveQuery(() => BookDao.getAll(), []);
+  const groups = useLiveQuery(() => BookGroupDao.getAll(), []);
   const [managing, setManaging] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [activeGroupId, setActiveGroupId] = useState<number>(
+    () => Number(localStorage.getItem(LS_GROUP) ?? -1),
+  );
   const [viewMode, setViewMode] = useState<ViewMode>(
     () => (localStorage.getItem(LS_VIEW) as ViewMode | null) ?? 'grid',
   );
   const [sortOrder, setSortOrder] = useState<SortOrder>(
     () => (localStorage.getItem(LS_SORT) as SortOrder | null) ?? '最近阅读',
   );
+  const [showGroupMenu, setShowGroupMenu] = useState<string | null>(null); // bookUrl for group assignment
+
+  // Seed default groups if empty
+  useEffect(() => {
+    BookGroupDao.getAll().then(existing => {
+      if (!existing.length) {
+        DEFAULT_GROUPS
+          .filter(g => g.groupId !== -1) // skip 全部 (virtual)
+          .forEach(g => db.bookGroups.put(g));
+      }
+    });
+  }, []);
 
   // Update-all state
   const [updating, setUpdating] = useState(false);
@@ -44,10 +72,12 @@ export default function Bookshelf() {
 
   useEffect(() => { localStorage.setItem(LS_VIEW, viewMode); }, [viewMode]);
   useEffect(() => { localStorage.setItem(LS_SORT, sortOrder); }, [sortOrder]);
+  useEffect(() => { localStorage.setItem(LS_GROUP, String(activeGroupId)); }, [activeGroupId]);
 
   if (!books) return null;
 
   const sortedBooks = sortBooks(books, sortOrder);
+  const displayedBooks = filterByGroup(sortedBooks, activeGroupId);
 
   const toggleSelect = (url: string) => {
     setSelected(prev => {
@@ -79,6 +109,22 @@ export default function Bookshelf() {
   const exitManage = () => {
     setManaging(false);
     setSelected(new Set());
+    setShowGroupMenu(null);
+  };
+
+  const assignGroup = async (bookUrl: string, groupId: number) => {
+    const book = books.find(b => b.bookUrl === bookUrl);
+    if (book) await BookDao.upsert({ ...book, group: groupId });
+    setShowGroupMenu(null);
+  };
+
+  const createGroup = async () => {
+    const name = prompt('新分组名称');
+    if (!name?.trim()) return;
+    // Get next groupId manually as max(existing positive) + 1
+    const existing = await BookGroupDao.getAll();
+    const maxId = existing.filter(g => g.groupId > 0).reduce((m, g) => Math.max(m, g.groupId), 0);
+    await BookGroupDao.upsert({ groupId: maxId + 1, groupName: name.trim(), order: maxId + 1, show: true });
   };
 
   const cycleSortOrder = () => {
@@ -206,6 +252,40 @@ export default function Bookshelf() {
         </div>
       </div>
 
+      {/* Group tab bar */}
+      {books.length > 0 && (
+        <div style={{
+          display: 'flex', overflowX: 'auto', gap: 0,
+          borderBottom: '1px solid var(--border)',
+          padding: '0 4px',
+          background: 'var(--bg)',
+          scrollbarWidth: 'none',
+        }}>
+          {/* 全部 tab (virtual) */}
+          {[{ groupId: -1, groupName: '全部' } as BookGroup,
+            ...(groups ?? []).filter(g => g.groupId < 0 && g.groupId !== -1),
+            ...(groups ?? []).filter(g => g.groupId > 0),
+          ].map(g => (
+            <button
+              key={g.groupId}
+              onClick={() => setActiveGroupId(g.groupId)}
+              style={{
+                flexShrink: 0, padding: '8px 14px', fontSize: 13,
+                color: activeGroupId === g.groupId ? 'var(--accent)' : 'var(--text2)',
+                background: 'none', border: 'none',
+                borderBottom: activeGroupId === g.groupId ? '2px solid var(--accent)' : '2px solid transparent',
+              } as React.CSSProperties}
+            >{g.groupName}</button>
+          ))}
+          <button
+            onClick={createGroup}
+            style={{ flexShrink: 0, padding: '8px 10px', fontSize: 16, color: 'var(--text2)',
+              background: 'none', border: 'none', borderBottom: '2px solid transparent' }}
+            title="新建分组"
+          >+</button>
+        </div>
+      )}
+
       {books.length === 0 ? (
         <div className="empty">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -215,30 +295,75 @@ export default function Bookshelf() {
           <p>书架空空如也<br />去搜索添加书籍，或先导入书源</p>
           <button className="btn btn-primary" onClick={() => navigate('/sources')}>管理书源</button>
         </div>
-      ) : viewMode === 'grid' ? (
-        <div className="book-grid">
-          {sortedBooks.map(book => (
-            <BookCard
-              key={book.bookUrl}
-              book={book}
-              managing={managing}
-              selected={selected.has(book.bookUrl)}
-              onClick={() => managing ? toggleSelect(book.bookUrl) : navigate(`/book/${encodeURIComponent(book.bookUrl)}`)}
-            />
-          ))}
-        </div>
       ) : (
-        <div className="book-list">
-          {sortedBooks.map(book => (
-            <BookListItem
-              key={book.bookUrl}
-              book={book}
-              managing={managing}
-              selected={selected.has(book.bookUrl)}
-              onClick={() => managing ? toggleSelect(book.bookUrl) : navigate(`/book/${encodeURIComponent(book.bookUrl)}`)}
-            />
-          ))}
-        </div>
+        <>
+          {/* Group assignment menu overlay */}
+          {showGroupMenu && (
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)' }}
+              onClick={() => setShowGroupMenu(null)}
+            >
+              <div
+                style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  background: 'var(--bg2)', borderRadius: '16px 16px 0 0',
+                  padding: '20px 0 40px',
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ padding: '0 20px 12px', fontSize: 14, fontWeight: 600 }}>移动到分组</div>
+                <button
+                  onClick={() => assignGroup(showGroupMenu, 0)}
+                  style={{ width: '100%', padding: '12px 20px', textAlign: 'left', fontSize: 14,
+                    color: 'var(--text2)', background: 'none', border: 'none', borderBottom: '1px solid var(--border)' }}
+                >未分组</button>
+                {(groups ?? []).filter(g => g.groupId > 0).map(g => (
+                  <button key={g.groupId}
+                    onClick={() => assignGroup(showGroupMenu, g.groupId)}
+                    style={{ width: '100%', padding: '12px 20px', textAlign: 'left', fontSize: 14,
+                      color: 'var(--text)', background: 'none', border: 'none', borderBottom: '1px solid var(--border)' }}
+                  >{g.groupName}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Manage action bar */}
+          {managing && selected.size > 0 && (
+            <div style={{ padding: '8px 16px', display: 'flex', gap: 12, borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setShowGroupMenu([...selected][0])}
+              >移动到分组</button>
+            </div>
+          )}
+
+          {viewMode === 'grid' ? (
+            <div className="book-grid">
+              {displayedBooks.map(book => (
+                <BookCard
+                  key={book.bookUrl}
+                  book={book}
+                  managing={managing}
+                  selected={selected.has(book.bookUrl)}
+                  onClick={() => managing ? toggleSelect(book.bookUrl) : navigate(`/book/${encodeURIComponent(book.bookUrl)}`)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="book-list">
+              {displayedBooks.map(book => (
+                <BookListItem
+                  key={book.bookUrl}
+                  book={book}
+                  managing={managing}
+                  selected={selected.has(book.bookUrl)}
+                  onClick={() => managing ? toggleSelect(book.bookUrl) : navigate(`/book/${encodeURIComponent(book.bookUrl)}`)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

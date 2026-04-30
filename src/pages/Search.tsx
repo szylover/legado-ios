@@ -27,10 +27,13 @@ export default function Search() {
   const navigate = useNavigate();
   const [kw, setKw] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
+  // Aggregated groups: name::author → alternates list
+  const [resultGroups, setResultGroups] = useState<Map<string, SearchResult[]>>(new Map());
   const [busy, setBusy] = useState(false);
   const [searchMeta, setSearchMeta] = useState<{ tried: number; total: number; errors: number; done: boolean } | null>(null);
   const [history, setHistory] = useState<string[]>(() => loadHistory());
   const [inputFocused, setInputFocused] = useState(false);
+  const [expandedSource, setExpandedSource] = useState<string | null>(null); // key of expanded group
   const aborted = useRef(false);
 
   const showHistory = inputFocused && !kw.trim() && results.length === 0 && !busy && !searchMeta;
@@ -48,7 +51,7 @@ export default function Search() {
     aborted.current = true;
     await new Promise(r => setTimeout(r, 0)); // flush pending batch
     aborted.current = false;
-    setBusy(true); setResults([]); setSearchMeta(null);
+    setBusy(true); setResults([]); setResultGroups(new Map()); setSearchMeta(null);
     const sources = await BookSourceDao.getEnabledWithSearch();
     if (!sources.length) { alert('请先导入并启用书源'); setBusy(false); return; }
 
@@ -72,7 +75,24 @@ export default function Search() {
         const add: SearchResult[] = [];
         for (const item of r.value) {
           const k = `${item.name}::${item.author}`;
-          if (!seen.has(k)) { seen.add(k); add.push(item); }
+          if (!seen.has(k)) {
+            seen.add(k);
+            add.push(item);
+            // Start a new group for this book
+            setResultGroups(prev => {
+              const next = new Map(prev);
+              next.set(k, [item]);
+              return next;
+            });
+          } else {
+            // Add as alternate source for existing group
+            setResultGroups(prev => {
+              const next = new Map(prev);
+              const existing = next.get(k) ?? [];
+              next.set(k, [...existing, item]);
+              return next;
+            });
+          }
         }
         if (add.length > 0) setResults(prev => [...prev, ...add]);
       }
@@ -195,31 +215,62 @@ export default function Search() {
       )}
 
       <div className="page-body" style={{ paddingTop: 0 }}>
-        {results.map((r, i) => (
-          <div key={i} className="source-item" style={{ alignItems: 'flex-start' }}>
-            {r.coverUrl && (
-              <img src={r.coverUrl} alt={r.name}
-                style={{ width: 48, height: 64, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="source-name">{r.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{r.author}</div>
-              {r.originName && (
-                <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 2, opacity: 0.8 }}>
-                  📚 {r.originName}
+        {results.map((r, i) => {
+          const groupKey = `${r.name}::${r.author}`;
+          const alternates = resultGroups.get(groupKey) ?? [r];
+          const isExpanded = expandedSource === groupKey;
+          return (
+            <div key={i} className="source-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0, padding: 12 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                {r.coverUrl && (
+                  <img src={r.coverUrl} alt={r.name}
+                    style={{ width: 48, height: 64, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="source-name">{r.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{r.author}</div>
+                  {r.intro && (
+                    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4,
+                      overflow: 'hidden', display: '-webkit-box',
+                      WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                      {r.intro}
+                    </div>
+                  )}
                 </div>
-              )}
-              {r.intro && (
-                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4,
-                  overflow: 'hidden', display: '-webkit-box',
-                  WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                  {r.intro}
+                <button className="btn btn-sm btn-primary" onClick={() => addBook(r)}>加入书架</button>
+              </div>
+              {/* Source selector */}
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                {alternates.length === 1 ? (
+                  <span style={{ fontSize: 11, color: 'var(--accent)', opacity: 0.8 }}>📚 {r.originName}</span>
+                ) : (
+                  <button
+                    onClick={() => setExpandedSource(isExpanded ? null : groupKey)}
+                    style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--surface)',
+                      border: '1px solid var(--border)', borderRadius: 12, padding: '3px 10px' }}
+                  >
+                    📚 {alternates.length} 个来源 {isExpanded ? '▲' : '▼'}
+                  </button>
+                )}
+              </div>
+              {isExpanded && (
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {alternates.map((alt, ai) => (
+                    <div key={ai} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '6px 10px', background: 'var(--surface)', borderRadius: 8,
+                      fontSize: 12,
+                    }}>
+                      <span style={{ color: 'var(--text)' }}>{alt.originName}</span>
+                      <button className="btn btn-sm btn-primary" style={{ fontSize: 11, padding: '4px 10px' }}
+                        onClick={() => addBook(alt)}>选此来源</button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-            <button className="btn btn-sm btn-primary" onClick={() => addBook(r)}>加入书架</button>
-          </div>
-        ))}
+          );
+        })}
         {results.length === 0 && busy && !searchMeta && (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text2)' }}>搜索中…</div>
         )}
