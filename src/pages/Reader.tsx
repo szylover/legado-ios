@@ -17,6 +17,16 @@ const LS_FONT_SIZE = 'reader_font_size';
 const LS_LINE_HEIGHT = 'reader_line_height';
 const LS_THEME = 'reader_theme';
 const LS_PAGE_MODE = 'reader_page_mode';
+const LS_BRIGHTNESS = 'reader_brightness';
+const LS_FONT_FAMILY = 'reader_font';
+
+const FONT_OPTIONS = [
+  { label: '默认', value: '' },
+  { label: '仿宋', value: 'FangSong, STFangSong, serif' },
+  { label: '楷体', value: 'KaiTi, STKaiti, serif' },
+  { label: '宋体', value: '"Songti SC", SimSun, serif' },
+  { label: '等宽', value: '"Courier New", Courier, monospace' },
+];
 
 function applyReplaceRules(text: string, rules: ReplaceRule[], origin: string): string {
   for (const rule of rules) {
@@ -76,6 +86,11 @@ export default function Reader() {
   const [lineHeight, setLineHeight] = useState(() => Number(localStorage.getItem(LS_LINE_HEIGHT)) || 2);
   const [themeKey, setThemeKey] = useState(() => localStorage.getItem(LS_THEME) || 'dark');
   const [pageMode, setPageMode] = useState<PageMode>(() => (Number(localStorage.getItem(LS_PAGE_MODE)) as PageMode) || 0);
+  const [brightness, setBrightness] = useState(() => {
+    const v = Number(localStorage.getItem(LS_BRIGHTNESS));
+    return v >= 0.3 && v <= 1 ? v : 1;
+  });
+  const [fontFamily, setFontFamily] = useState(() => localStorage.getItem(LS_FONT_FAMILY) ?? '');
 
   // slide animation state
   const [slideAnim, setSlideAnim] = useState<'none' | 'exit-left' | 'exit-right' | 'enter-right' | 'enter-left'>('none');
@@ -176,6 +191,8 @@ export default function Reader() {
   useEffect(() => { localStorage.setItem(LS_LINE_HEIGHT, String(lineHeight)); }, [lineHeight]);
   useEffect(() => { localStorage.setItem(LS_THEME, themeKey); }, [themeKey]);
   useEffect(() => { localStorage.setItem(LS_PAGE_MODE, String(pageMode)); }, [pageMode]);
+  useEffect(() => { localStorage.setItem(LS_BRIGHTNESS, String(brightness)); }, [brightness]);
+  useEffect(() => { localStorage.setItem(LS_FONT_FAMILY, fontFamily); }, [fontFamily]);
 
   // Stop TTS when leaving reader
   useEffect(() => () => { tts.stop(); }, []);
@@ -312,7 +329,7 @@ export default function Reader() {
   const downloadedPct = chapters.length ? Math.round((cachedCount / chapters.length) * 100) : 0;
 
   return (
-    <div className="reader-wrap" style={{ background: theme.bg, color: theme.text }}>
+    <div className="reader-wrap" style={{ background: theme.bg, color: theme.text, filter: brightness < 1 ? `brightness(${brightness})` : undefined }}>
       {showCtrl && (
         <div className="reader-hdr">
           <button onClick={() => navigate(-1)} style={{ color: 'var(--accent)', flexShrink: 0 }}>← 返回</button>
@@ -343,7 +360,7 @@ export default function Reader() {
         /* ── 滚动模式 ── */
         <div
           className="reader-body"
-          style={{ fontSize, lineHeight, color: theme.text, background: theme.bg }}
+          style={{ fontSize, lineHeight, color: theme.text, background: theme.bg, fontFamily: fontFamily || undefined }}
           onClick={() => { if (!showChapterList && !showSettings && !showBookmarks) setShowCtrl(v => !v); }}
         >
           {loading
@@ -357,7 +374,7 @@ export default function Reader() {
           className="reader-body"
           style={{
             fontSize, lineHeight, color: theme.text, background: theme.bg,
-            overflow: 'hidden', position: 'relative',
+            overflow: 'hidden', position: 'relative', fontFamily: fontFamily || undefined,
           }}
           onClick={() => { if (!showChapterList && !showSettings && !showBookmarks) setShowCtrl(v => !v); }}
           onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
@@ -547,7 +564,7 @@ export default function Reader() {
             </div>
 
             {/* Page mode */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <span style={{ fontSize: 12, color: 'var(--text2)', width: 60 }}>翻页</span>
               <div style={{ display: 'flex', gap: 10, flex: 1 }}>
                 {([
@@ -564,6 +581,40 @@ export default function Reader() {
                       border: '2px solid transparent',
                     }}
                   >{label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Brightness */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)', width: 60 }}>亮度</span>
+              <span style={{ fontSize: 14 }}>🌑</span>
+              <input
+                type="range"
+                min={0.3} max={1} step={0.05}
+                value={brightness}
+                onChange={e => setBrightness(Number(e.target.value))}
+                style={{ flex: 1, accentColor: 'var(--accent)' }}
+              />
+              <span style={{ fontSize: 14 }}>☀️</span>
+            </div>
+
+            {/* Font family */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)', width: 60 }}>字体</span>
+              <div style={{ display: 'flex', gap: 8, flex: 1, flexWrap: 'wrap' }}>
+                {FONT_OPTIONS.map(opt => (
+                  <button
+                    key={opt.label}
+                    onClick={() => setFontFamily(opt.value)}
+                    style={{
+                      padding: '6px 10px', borderRadius: 8, fontSize: 12,
+                      background: fontFamily === opt.value ? 'var(--accent)' : 'var(--surface)',
+                      color: fontFamily === opt.value ? '#000' : 'var(--text)',
+                      border: '2px solid transparent',
+                      fontFamily: opt.value || undefined,
+                    }}
+                  >{opt.label}</button>
                 ))}
               </div>
             </div>
