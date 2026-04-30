@@ -4,21 +4,46 @@ import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { BookDao } from '@/data/dao/BookDao';
 import { searchBooks, type SearchResult } from '@/core/network/WebBook';
 
+const LS_HISTORY = 'search_history';
+const MAX_HISTORY = 10;
+
+function loadHistory(): string[] {
+  try { return JSON.parse(localStorage.getItem(LS_HISTORY) ?? '[]') as string[]; }
+  catch { return []; }
+}
+
+function saveHistory(h: string[]) {
+  localStorage.setItem(LS_HISTORY, JSON.stringify(h));
+}
+
+function addToHistory(kw: string): string[] {
+  const h = loadHistory().filter(s => s !== kw);
+  const next = [kw, ...h].slice(0, MAX_HISTORY);
+  saveHistory(next);
+  return next;
+}
+
 export default function Search() {
   const navigate = useNavigate();
   const [kw, setKw] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [searchMeta, setSearchMeta] = useState<{ tried: number; total: number; errors: number; done: boolean } | null>(null);
+  const [history, setHistory] = useState<string[]>(() => loadHistory());
+  const [inputFocused, setInputFocused] = useState(false);
   const aborted = useRef(false);
+
+  const showHistory = inputFocused && !kw.trim() && results.length === 0 && !busy && !searchMeta;
 
   const cancelSearch = () => {
     aborted.current = true;
     setBusy(false);
   };
 
-  const doSearch = async () => {
-    if (!kw.trim()) return;
+  const doSearch = async (keyword?: string) => {
+    const q = (keyword ?? kw).trim();
+    if (!q) return;
+    if (keyword) setKw(keyword);
     // Cancel any in-progress search before starting a new one
     aborted.current = true;
     await new Promise(r => setTimeout(r, 0)); // flush pending batch
@@ -35,7 +60,7 @@ export default function Search() {
     for (let i = 0; i < total; i += BATCH) {
       if (aborted.current) break;
       const batch = sources.slice(i, i + BATCH);
-      const settled = await Promise.allSettled(batch.map(s => searchBooks(s, kw)));
+      const settled = await Promise.allSettled(batch.map(s => searchBooks(s, q)));
       for (let j = 0; j < settled.length; j++) {
         const r = settled[j];
         tried++;
@@ -44,8 +69,6 @@ export default function Search() {
           console.warn('[Search] error from', batch[j]?.bookSourceName, ':', (r as PromiseRejectedResult).reason?.message ?? (r as PromiseRejectedResult).reason);
           continue;
         }
-        // Compute new items outside the updater — seen must not be mutated
-        // inside setResults because React StrictMode double-invokes updaters
         const add: SearchResult[] = [];
         for (const item of r.value) {
           const k = `${item.name}::${item.author}`;
@@ -55,8 +78,25 @@ export default function Search() {
       }
       setSearchMeta({ tried, total, errors, done: i + BATCH >= total });
     }
-    setSearchMeta({ tried, total, errors, done: true });
+    setSearchMeta(prev => ({ tried, total, errors, done: true, ...(prev ?? {}) }));
     setBusy(false);
+
+    // Add to history after successful search with results
+    if (!aborted.current) {
+      const newHistory = addToHistory(q);
+      setHistory(newHistory);
+    }
+  };
+
+  const removeHistory = (item: string) => {
+    const next = history.filter(h => h !== item);
+    setHistory(next);
+    saveHistory(next);
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    saveHistory([]);
   };
 
   const addBook = async (r: SearchResult) => {
@@ -75,10 +115,17 @@ export default function Search() {
   return (
     <div>
       <div className="search-bar">
-        <input className="search-input" autoFocus placeholder="书名 / 作者…"
-          value={kw} onChange={e => setKw(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && doSearch()} />
-        <button className="btn btn-primary" onClick={doSearch} disabled={busy}>
+        <input
+          className="search-input"
+          autoFocus
+          placeholder="书名 / 作者…"
+          value={kw}
+          onChange={e => setKw(e.target.value)}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setTimeout(() => setInputFocused(false), 150)}
+          onKeyDown={e => e.key === 'Enter' && doSearch()}
+        />
+        <button className="btn btn-primary" onClick={() => doSearch()} disabled={busy}>
           {busy ? '…' : '搜'}
         </button>
         {busy && (
@@ -89,7 +136,51 @@ export default function Search() {
         )}
       </div>
 
-      {results.length === 0 && !busy && !searchMeta && (
+      {/* Search history panel */}
+      {showHistory && history.length > 0 && (
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>搜索历史</span>
+            <button
+              onClick={clearHistory}
+              style={{ fontSize: 12, color: 'var(--text2)' }}
+            >
+              清空
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {history.map(item => (
+              <div
+                key={item}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  background: 'var(--surface)', borderRadius: 16, padding: '5px 12px',
+                  fontSize: 13, border: '1px solid var(--border)', cursor: 'pointer',
+                }}
+              >
+                <span
+                  onClick={() => doSearch(item)}
+                  style={{ color: 'var(--text)' }}
+                >
+                  {item}
+                </span>
+                <button
+                  onClick={e => { e.stopPropagation(); removeHistory(item); }}
+                  style={{ color: 'var(--text2)', fontSize: 12, lineHeight: 1, padding: '0 2px' }}
+                  title="删除"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {results.length === 0 && !busy && !searchMeta && !showHistory && (
+        <div className="empty"><p>输入书名或作者搜索</p></div>
+      )}
+      {results.length === 0 && !busy && !searchMeta && showHistory && history.length === 0 && (
         <div className="empty"><p>输入书名或作者搜索</p></div>
       )}
       {searchMeta && (
