@@ -6,6 +6,7 @@ import { BookChapterDao } from '@/data/dao/BookChapterDao';
 import { BookSourceDao } from '@/data/dao/BookSourceDao';
 import { BookGroupDao } from '@/data/dao/BookGroupDao';
 import { getChapterList, getBookInfo } from '@/core/network/WebBook';
+import { importLocalBook } from '@/core/localBook/LocalBookImporter';
 import type { Book } from '@/data/entities/Book';
 import type { BookGroup } from '@/data/entities/BookGroup';
 import { DEFAULT_GROUPS } from '@/data/entities/BookGroup';
@@ -127,69 +128,17 @@ export default function Bookshelf() {
     await BookGroupDao.upsert({ groupId: maxId + 1, groupName: name.trim(), order: maxId + 1, show: true });
   };
 
-  const importTxt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const importLocal = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
 
-    const text = await file.text();
-    const fileName = file.name.replace(/\.txt$/i, '');
-
-    // Chapter detection patterns (legado-compatible)
-    const CHAPTER_RE = /^(第[零一二三四五六七八九十百千万\d]+[章节卷集回部][\s\S]{0,30}|Chapter\s+\d+[\s\S]{0,30}|CHAPTER\s+\d+[\s\S]{0,30}|序章|楔子|尾声|后记|番外[\s\S]{0,20})/m;
-    const lines = text.split('\n');
-    const chapterStarts: { idx: number; title: string }[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      if (CHAPTER_RE.test(line) && line.length < 60) {
-        chapterStarts.push({ idx: i, title: line });
-      }
+    try {
+      const { book, chapters } = await importLocalBook(file);
+      alert(`✅ 导入成功：《${book.name}》共 ${chapters.length} 章`);
+    } catch (err) {
+      alert(`导入失败: ${(err as Error).message}`);
     }
-
-    // If no chapters detected, treat whole file as one chapter
-    if (chapterStarts.length < 2) {
-      chapterStarts.length = 0;
-      chapterStarts.push({ idx: 0, title: fileName });
-    }
-
-    // Build chapters
-    const chaptersData: { title: string; content: string }[] = [];
-    for (let i = 0; i < chapterStarts.length; i++) {
-      const start = chapterStarts[i].idx + 1;
-      const end = chapterStarts[i + 1]?.idx ?? lines.length;
-      chaptersData.push({
-        title: chapterStarts[i].title,
-        content: lines.slice(start, end).join('\n').trim(),
-      });
-    }
-
-    const bookUrl = `local://${fileName}_${Date.now()}`;
-    const now = Date.now();
-
-    await BookDao.upsert({
-      bookUrl, tocUrl: bookUrl, origin: 'local', originName: '本地书籍',
-      name: fileName, author: '', type: 0, group: -2, // -2 = 本地分组
-      latestChapterTitle: chaptersData[chaptersData.length - 1]?.title,
-      latestChapterTime: now, lastCheckTime: now, lastCheckCount: 0,
-      totalChapterNum: chaptersData.length, scrollIndex: 0,
-      durChapterIndex: 0, durChapterPos: 0, durChapterTime: now,
-      canUpdate: false, order: now,
-    });
-
-    await BookChapterDao.insertMany(chaptersData.map((ch, i) => ({
-      bookUrl,
-      url: `${bookUrl}#${i}`,
-      index: i,
-      title: ch.title,
-      cachedContent: ch.content,
-      isVolume: false,
-      isVip: false,
-      isPay: false,
-    })));
-
-    alert(`✅ 导入成功：《${fileName}》共 ${chaptersData.length} 章`);
   };
 
   const cycleSortOrder = () => {
@@ -285,13 +234,13 @@ export default function Bookshelf() {
             <>
               <button onClick={() => navigate('/search')} style={{ color: 'var(--accent)', fontSize: 14 }}>搜索</button>
               <label
-                title="导入本地 TXT 书籍"
+                title="导入本地 TXT / EPUB 书籍"
                 style={{ color: 'var(--accent)', fontSize: 14, cursor: 'pointer' }}
               >
                 📂
                 <input
-                  type="file" accept=".txt" style={{ display: 'none' }}
-                  onChange={importTxt}
+                  type="file" accept=".txt,.epub,application/epub+zip" style={{ display: 'none' }}
+                  onChange={importLocal}
                 />
               </label>
               {books.length > 0 && (
@@ -371,8 +320,8 @@ export default function Bookshelf() {
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={() => navigate('/sources')}>管理书源</button>
             <label className="btn btn-ghost" style={{ cursor: 'pointer' }}>
-              📂 导入 TXT
-              <input type="file" accept=".txt" style={{ display: 'none' }} onChange={importTxt} />
+              📂 导入本地书
+              <input type="file" accept=".txt,.epub,application/epub+zip" style={{ display: 'none' }} onChange={importLocal} />
             </label>
           </div>
         </div>
